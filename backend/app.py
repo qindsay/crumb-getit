@@ -164,6 +164,8 @@ def score_recipe(recipe):
       "score": <float>
     }"""
     
+    print(recipe)
+    
     try:
         model = genai.GenerativeModel('gemini-2.5-flash-preview-04-17')
         generation_config = GenerationConfig(
@@ -178,6 +180,24 @@ def score_recipe(recipe):
         return None
     
     return json.loads(response.text)
+
+def parse_recipe_strings(raw_data):
+    if not raw_data or not isinstance(raw_data, dict) or 'recipeData' not in raw_data:
+        raise ValueError('Invalid recipe data format.')
+
+    recipe_data = raw_data['recipeData']
+    ingredients_list = recipe_data.get('ingredients_used', [])
+    instructions_list = recipe_data.get('instructions', [])
+
+    ingredients_str = '\n'.join(
+        f"{item.get('amount', '?')} {item.get('unit', '')} {item.get('name', '')}".strip()
+        for item in ingredients_list
+    )
+
+    instructions_str = '\n'.join(
+        f"{idx+1}. {step}" for idx, step in enumerate(instructions_list)
+    )
+    return ingredients_str + instructions_str
 
 # Function to get a single chat response (refactored from chat_with_assistant)
 def get_chat_response_logic(user_message, recipe_json, personality_name, chat_history=None):
@@ -254,6 +274,7 @@ def api_generate_recipe():
     """API endpoint to generate a recipe."""
     try:
         data = request.get_json()
+        
         if not data or 'ingredients' not in data or 'cuisine' not in data:
             return jsonify({"error": "Missing 'ingredients' or 'cuisine' in request body"}), 400
 
@@ -282,13 +303,16 @@ def api_score_recipe():
     """API endpoint to score a recipe."""
     try:
         data = request.get_json()
-        if not data or 'recipe' not in data:
-            return jsonify({"error": "Missing 'recipe' in request body"}), 400
+        print(f"here {data}")
+        if not data:
+            return jsonify({"error": "Missing 'ingredients_used' or 'instructions' in request body"}), 400
 
-        recipe = data['recipe']
+        # ingredients = data['ingredients_used']
+        # instructions = data['instructions']
+        recipe = parse_recipe_strings(data)
         output = score_recipe(recipe)
         score = output['score']
-        print(f"Received score={score}")
+        # print(f"Received score={score}")
 
         if output:
             print("Score, reasoning generated successfully.") 
