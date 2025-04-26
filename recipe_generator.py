@@ -138,7 +138,7 @@ def generate_recipe(ingredients, cuisine):
 
     try:
         # Select the model (Using a consistent, recent model)
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        model = genai.GenerativeModel('gemini-2.5-flash-preview-04-17')
 
         # Configure the model to output JSON
         generation_config = GenerationConfig(
