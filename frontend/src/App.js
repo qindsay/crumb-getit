@@ -28,6 +28,7 @@ function App() {
   const [cuisine, setCuisine] = useState('Mediterranean');
   const [selectedPersonality, setSelectedPersonality] = useState('Gordon Ramsay'); // Default personality
   const [recipe, setRecipe] = useState(null);
+  const [score, setScore] = useState(0);
   const [chatHistory, setChatHistory] = useState([]); // Stores { sender: 'user'/'assistant', message: '...' }
   const [userMessage, setUserMessage] = useState('');
   const [isLoadingRecipe, setIsLoadingRecipe] = useState(false);
@@ -47,48 +48,133 @@ function App() {
   // --- API Call Functions ---
 
   // Function to generate recipe
+  // const handleGenerateRecipe = useCallback(async () => {
+  //   setIsLoadingRecipe(true);
+  //   setError(null);
+  //   setRecipe(null); // Clear previous recipe
+  //   setChatHistory([]); // Clear chat on new recipe
+
+  //   console.log("Sending recipe request:", { ingredients, cuisine }); // Log request data
+
+  //   try {
+  //     // Use the BACKEND_URL constant
+  //     const response1 = await fetch(`${BACKEND_URL}/api/generate-recipe`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ ingredients, cuisine }),
+  //     });
+
+  //      console.log("Recipe response status:", response1.status); // Log response status
+
+  //     if (!response1.ok) {
+  //       // --- Error Handling Fix ---
+  //       // Read the body ONCE as text first.
+  //       const errorText = await response1.text();
+  //       let errorMsg = `HTTP error ${response1.status}: ${errorText}`;
+  //       try {
+  //           // Try to parse the text as JSON for a more specific error message
+  //           const errorJson = JSON.parse(errorText);
+  //           errorMsg = `HTTP error ${response1.status}: ${errorJson.error || errorText}`;
+  //       } catch (parseError) {
+  //           // If it's not JSON, use the raw text.
+  //           // errorMsg is already set to the text content.
+  //       }
+  //       throw new Error(errorMsg);
+  //       // --- End Error Handling Fix ---
+  //     }
+      
+  //     const data = await response1.json();
+  //     console.log("Recipe received:", data); // Log received data
+  //     setRecipe(data);
+
+  //     let initialMessage = `Right, let's get cooking this ${data.recipe_name || 'dish'}! What's your first question?`;
+  //     setChatHistory([{ sender: 'assistant', message: initialMessage }]);
+
+  //   } catch (err) {
+  //     console.error("Failed to generate recipe:", err);
+  //     // err.message now contains the detailed error from the backend or fetch failure
+  //     setError(`Failed to generate recipe: ${err.message}. Ensure the backend server at ${BACKEND_URL} is running and CORS is enabled.`);
+  //   } finally {
+  //     setIsLoadingRecipe(false);
+  //   }
+  // }, [ingredients, cuisine]); // Dependencies for useCallback
+
   const handleGenerateRecipe = useCallback(async () => {
     setIsLoadingRecipe(true);
     setError(null);
     setRecipe(null); // Clear previous recipe
+    setScore(0)
     setChatHistory([]); // Clear chat on new recipe
 
     console.log("Sending recipe request:", { ingredients, cuisine }); // Log request data
 
     try {
       // Use the BACKEND_URL constant
-      const response = await fetch(`${BACKEND_URL}/api/generate-recipe`, {
+      const response1 = await fetch(`${BACKEND_URL}/api/generate-recipe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ingredients, cuisine }),
       });
 
-       console.log("Recipe response status:", response.status); // Log response status
+       console.log("Recipe response status:", response1.status); // Log response status
 
-      if (!response.ok) {
-        // --- Error Handling Fix ---
+      if (!response1.ok) {
         // Read the body ONCE as text first.
-        const errorText = await response.text();
-        let errorMsg = `HTTP error ${response.status}: ${errorText}`;
+        const errorText = await response1.text();
+        let errorMsg = `HTTP error ${response1.status}: ${errorText}`;
         try {
             // Try to parse the text as JSON for a more specific error message
             const errorJson = JSON.parse(errorText);
-            errorMsg = `HTTP error ${response.status}: ${errorJson.error || errorText}`;
+            errorMsg = `HTTP error ${response1.status}: ${errorJson.error || errorText}`;
         } catch (parseError) {
             // If it's not JSON, use the raw text.
-            // errorMsg is already set to the text content.
         }
         throw new Error(errorMsg);
-        // --- End Error Handling Fix ---
+      }
+      
+      const recipeData = await response1.json();
+      console.log("Recipe received:", recipeData); // Log received data
+      setRecipe(recipeData);
+
+      try {
+        console.log('Recipe being sent for scoring:', recipeData);
+  
+        const response2 = await fetch(`${BACKEND_URL}/api/score-recipe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({recipeData})
+        });
+  
+        if (!response2.ok) {
+          // --- Error Handling Fix ---
+          // Read the body ONCE as text first.
+          const errorText = await response2.text();
+          let errorMsg = `HTTP error ${response2.status}: ${errorText}`;
+          try {
+              // Try to parse the text as JSON for a more specific error message
+              const errorJson = JSON.parse(errorText);
+              errorMsg = `HTTP error ${response2.status}: ${errorJson.error || errorText}`;
+              console.error(errorMsg)
+          } catch (parseError) {
+              // If it's not JSON, use the raw text.
+              // errorMsg is already set to the text content.
+          }
+          throw new Error(errorMsg);
+          // --- End Error Handling Fix ---
+        }
+  
+        const scoreData = await response2.json()
+        console.log("Score received:", scoreData); // Log received data
+        setScore(scoreData['score']);
+  
+      } catch (err) {
+        console.error("Failed to score recipe:", err);
+        // err.message now contains the detailed error from the backend or fetch failure
+        setError(`Failed to score recipe: ${err.message}. Ensure the backend server at ${BACKEND_URL} is running and CORS is enabled.`);
       }
 
-      // If response.ok is true, parse the JSON body
-      const data = await response.json();
-      console.log("Recipe received:", data); // Log received data
-      setRecipe(data);
-       // Add an initial message from the assistant based on selected personality
-       let initialMessage = `Right, let's get cooking this ${data.recipe_name || 'dish'}! What's your first question?`;
-       setChatHistory([{ sender: 'assistant', message: initialMessage }]);
+      let initialMessage = `Right, let's get cooking this ${recipeData.recipe_name || 'dish'}! What's your first question?`;
+      setChatHistory([{ sender: 'assistant', message: initialMessage }]);
 
     } catch (err) {
       console.error("Failed to generate recipe:", err);
@@ -98,6 +184,8 @@ function App() {
       setIsLoadingRecipe(false);
     }
   }, [ingredients, cuisine]); // Dependencies for useCallback
+
+  
 
   // Function to send chat message
   const handleSendMessage = useCallback(async () => {
@@ -275,6 +363,9 @@ function App() {
         )}
       </div>
 
+      <div>
+      <ol className="list-decimal list-inside ml-4 space-y-1">Score: {score}</ol>
+      </div>
       {/* --- Right Panel: Chat --- */}
       <div className="md:w-1/2 flex flex-col bg-white p-4 rounded-lg shadow">
         <h2 className="text-xl font-semibold mb-3 border-b pb-2">{selectedPersonality} Assistant</h2>
