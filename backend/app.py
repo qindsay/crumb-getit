@@ -153,6 +153,32 @@ def generate_recipe_logic(ingredients, cuisine):
         # print(f"Full response: {response}") # Optional: for debugging
         return None
 
+def score_recipe(recipe):
+    
+    context = """You're scoring recipes based on how much environmental impact they have. 
+    Formula: Sustainability Score = (weight_carbon * carbon_subscore) + (weight_land * land_subscore) + 
+    (weight_water * water_subscore) + (weight_antibiotics * antibiotics_subscore) + (weight_soil * soil_subscore).
+    Use web data to calculate weights and subscores, give a score out of 10. Only output the score in this exact JSON format. 
+    The JSON object must follow this exact structure: 
+    { 
+      "score": <float>
+    }"""
+    
+    try:
+        model = genai.GenerativeModel('gemini-2.5-flash-preview-04-17')
+        generation_config = GenerationConfig(
+            response_mime_type="application/json"
+        )
+        prompt = context + recipe
+        response = model.generate_content(
+            prompt, generation_config=generation_config
+        )
+    except Exception as e:
+        print(f"Error: Failed to generate recipe content: {e}")
+        return None
+    
+    return json.loads(response.text)
+
 # Function to get a single chat response (refactored from chat_with_assistant)
 def get_chat_response_logic(user_message, recipe_json, personality_name, chat_history=None):
     """
@@ -244,11 +270,35 @@ def api_generate_recipe():
             print("Recipe generated successfully.") # Log success
             return jsonify(recipe)
         else:
-            print("Failed to generate recipe (logic function returned None).") # Log failure
+            print("Failed to have output (logic function returned None).") # Log failure
             return jsonify({"error": "Failed to generate recipe"}), 500
 
     except Exception as e:
         print(f"Error in /api/generate-recipe: {e}") # Log exception
+        return jsonify({"error": f"An internal server error occurred: {e}"}), 500
+    
+@app.route('/api/score-recipe', methods=['POST'])
+def api_score_recipe():
+    """API endpoint to score a recipe."""
+    try:
+        data = request.get_json()
+        if not data or 'recipe' not in data:
+            return jsonify({"error": "Missing 'recipe' in request body"}), 400
+
+        recipe = data['recipe']
+        output = score_recipe(recipe)
+        score = output['score']
+        print(f"Received score={score}")
+
+        if output:
+            print("Score, reasoning generated successfully.") 
+            return jsonify(output)
+        else:
+            print("Failed to output score (logic function returned None).") # Log failure
+            return jsonify({"error": "Failed to output score"}), 500
+
+    except Exception as e:
+        print(f"Error in /api/score-recipe: {e}") # Log exception
         return jsonify({"error": f"An internal server error occurred: {e}"}), 500
 
 
