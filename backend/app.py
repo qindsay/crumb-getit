@@ -237,7 +237,19 @@ def find_ingredients(file):
     except Exception as e:
         print(f"Error: Failed to detect ingredients: {e}")
         return None
-    
+
+@app.route('/api/recognize-ingredients', methods=['POST']) #scans image and outputs ingredients
+def api_recognize_ingredients():
+    try:
+        data = request.get_json()
+        image_data = data['image']  # Get the base64 string from the client
+        
+        ingredients = find_ingredients(image_data)
+        print("current ingredients", ingredients)
+        return jsonify({"ingredients": ingredients}) #not sure if it's ingredients json
+    except Exception as e:
+        print(f"Error in /api/recognize-ingredients: {e}") # Log exception
+        return jsonify({"error": f"An internal server error occurred: {e}"}), 500
 
 def parse_recipe_strings(raw_data):
     if not raw_data or not isinstance(raw_data, dict) or 'recipeData' not in raw_data:
