@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import imageCompression from 'browser-image-compression'; // ⬅️ Add this import at the top with your other imports
+
 // Assuming Tailwind CSS is set up in your project
 
 // --- Configuration ---
@@ -34,6 +36,10 @@ function App() {
   const [isLoadingRecipe, setIsLoadingRecipe] = useState(false);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [error, setError] = useState(null);
+  const [validationImage, setValidationImage] = useState(null);
+const [validationResult, setValidationResult] = useState(null);
+const [isValidatingRecipe, setIsValidatingRecipe] = useState(false);
+
 
   // --- Available Personalities (matches Python keys/names) ---
   const personalities = [
@@ -46,6 +52,48 @@ function App() {
   ];
 
   // --- API Call Functions ---
+
+
+const handleValidateRecipe = async (e) => {
+  e.preventDefault();
+  if (!validationImage || !recipe) return;
+
+  setIsValidatingRecipe(true);
+  setValidationResult(null);
+
+  try {
+    // Compress the image BEFORE uploading
+    const options = {
+      maxSizeMB: 0.5,           // target max size: 0.5 MB (very small!)
+      maxWidthOrHeight: 800,    // resize to max 800px width or height
+      useWebWorker: true        // speed up compression
+    };
+    const compressedFile = await imageCompression(validationImage, options);
+
+    // Prepare FormData
+    const formData = new FormData();
+    formData.append('image', compressedFile);  // Use compressed image!
+    formData.append('recipe', recipe.recipe_name || 'Unknown Dish');
+
+    const response = await fetch(`${BACKEND_URL}/api/validate-recipe`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      setValidationResult({ success: data.success, message: data.message });
+    } else {
+      setValidationResult({ success: false, message: data.message || 'Validation failed.' });
+    }
+  } catch (error) {
+    console.error('Validation error:', error);
+    setValidationResult({ success: false, message: 'An error occurred during validation.' });
+  } finally {
+    setIsValidatingRecipe(false);
+  }
+};
+
 
   // Function to generate recipe
   // const handleGenerateRecipe = useCallback(async () => {
@@ -366,6 +414,38 @@ function App() {
       <div>
       <ol className="list-decimal list-inside ml-4 space-y-1">Score: {score}</ol>
       </div>
+      {/* --- New Section: Validate Completed Recipe --- */}
+{recipe && (
+  <div className="bg-white p-4 rounded-lg shadow mt-4 space-y-3">
+    <h2 className="text-2xl font-bold text-purple-700">Validate Your Dish</h2>
+    <p className="text-gray-600">Upload a picture of the dish you made for <span className="font-semibold">{recipe.recipe_name}</span> to earn points!</p>
+
+    <form onSubmit={handleValidateRecipe}>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => setValidationImage(e.target.files[0])}
+        className="block mt-2"
+      />
+      <button
+        type="submit"
+        className="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={!validationImage || isValidatingRecipe}
+      >
+        {isValidatingRecipe ? 'Validating...' : 'Submit for Validation'}
+      </button>
+    </form>
+
+    {/* Result Message */}
+    {validationResult && (
+      <div className={`mt-3 p-3 rounded-md ${validationResult.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+        {validationResult.message}
+      </div>
+    )}
+  </div>
+)}
+
+
       {/* --- Right Panel: Chat --- */}
       <div className="md:w-1/2 flex flex-col bg-white p-4 rounded-lg shadow">
         <h2 className="text-xl font-semibold mb-3 border-b pb-2">{selectedPersonality} Assistant</h2>
