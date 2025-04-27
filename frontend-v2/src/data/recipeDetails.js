@@ -34,5 +34,5 @@ export const recipeDetail = {
   ],
   image: "/src/assets/chocolate_lava.png",
   time: "30 min",
-  ecobiteScore: 85,
+  score: 85,
 };

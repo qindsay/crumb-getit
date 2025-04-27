@@ -2,10 +2,7 @@ import { currentUserId, leaderboardData } from "../data/leaderboard";
 import { pastMeals } from "../data/pastMeals";
 
 export default function Leaderboard() {
-  const totalPoints = pastMeals.reduce(
-    (sum, meal) => sum + meal.ecobiteScore,
-    0,
-  );
+  const totalPoints = pastMeals.reduce((sum, meal) => sum + meal.score, 0);
 
   return (
     <div className="min-h-screen w-full bg-white pb-16 sm:pb-0">

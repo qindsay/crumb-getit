@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function CreateRecipe() {
   const [ingredients, setIngredients] = useState("");
+  const [cuisine, setCuisine] = useState("");
   const [isWebcamOpen, setIsWebcamOpen] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -46,8 +47,8 @@ export default function CreateRecipe() {
 
         {/* Main Content */}
         <div className="bg-gray-50 rounded-3xl p-8 shadow-lg">
-          {/* Input Method */}
-          <div className="mb-8">
+          {/* Input Methods */}
+          <div className="space-y-4 mb-8">
             <button
               onClick={handleCameraClick}
               className="group relative w-full overflow-hidden rounded-2xl bg-white p-6 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] border border-gray-100"
@@ -80,6 +81,24 @@ export default function CreateRecipe() {
                 </div>
               </div>
             </button>
+
+            {/* Cuisine Input */}
+            <div>
+              <label
+                htmlFor="cuisine"
+                className="block text-lg font-medium text-gray-900 mb-2"
+              >
+                Cuisine Type
+              </label>
+              <input
+                type="text"
+                id="cuisine"
+                value={cuisine}
+                onChange={(e) => setCuisine(e.target.value)}
+                placeholder="Enter cuisine type (e.g., Italian, Japanese, etc.)"
+                className="w-full px-6 py-4 text-base bg-white text-gray-900 rounded-xl border border-gray-200 hover:border-primary-300 focus:border-primary-300 focus:ring-2 focus:ring-primary-300 focus:ring-opacity-20 focus:outline-none transition-all duration-200 placeholder-gray-400"
+              />
+            </div>
           </div>
 
           {/* Text Input */}

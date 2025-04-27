@@ -1,12 +1,51 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { recipes, filterCategories } from "../data/recipes";
+const BACKEND_URL = "http://127.0.0.1:5001";
 import RecipeCarousel from "../components/RecipeCarousel";
 import FilterCarousel from "../components/FilterCarousel";
 
 export default function Home() {
   const navigate = useNavigate();
   const [selectedFilter, setSelectedFilter] = useState("All");
+  const [allRecipes, setAllRecipes] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchRecipes = async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/get-recipes`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch recipes");
+        }
+        const data = await response.json();
+        setAllRecipes(data);
+      } catch (err) {
+        console.error("Error fetching recipes:", err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRecipes();
+  }, []);
+
+  // Generate unique cuisine filters from recipes
+  const filterCategories = useMemo(() => {
+    const uniqueCuisines = [
+      ...new Set(allRecipes.map((recipe) => recipe.cuisine)),
+    ].filter(Boolean);
+    return ["All", ...uniqueCuisines.sort()];
+  }, [allRecipes]);
+
+  // Filter recipes based on selected cuisine
+  const filteredRecipes = useMemo(() => {
+    if (selectedFilter === "All") {
+      return allRecipes;
+    }
+    return allRecipes.filter((recipe) => recipe.cuisine === selectedFilter);
+  }, [selectedFilter, allRecipes]);
 
   return (
     <div className="min-h-screen w-full bg-white overflow-x-hidden pb-16 sm:pb-0">
@@ -29,7 +68,7 @@ export default function Home() {
 
         <div className="relative">
           <div className="mb-8 sm:mb-12">
-            <RecipeCarousel recipes={recipes} />
+            <RecipeCarousel recipes={filteredRecipes} />
           </div>
 
           <button

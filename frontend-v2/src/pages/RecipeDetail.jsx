@@ -1,15 +1,16 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import imageCompression from "browser-image-compression";
 import ReplyModal from "../components/ReplyModal";
 import WebcamModal from "../components/WebcamModal";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 import { useNavigate, useLocation } from "react-router-dom";
-import { recipeDetail } from "../data/recipeDetails";
+//import { recipeDetail } from "../data/recipeDetails";
 import InstructionBlock from "../components/InstructionBlock";
 const BACKEND_URL = "http://127.0.0.1:5001"; // Use http://localhost:5001 if 127.0.0.1 doesn't work
 
-export default function RecipeDetail({ recipe }) {
+export default function RecipeDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const silenceTimer = useRef(null);
@@ -36,6 +37,7 @@ export default function RecipeDetail({ recipe }) {
     resetTranscript,
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
+
 
   // Check for new words and reset silence timer
   useEffect(() => {
@@ -90,6 +92,7 @@ export default function RecipeDetail({ recipe }) {
   const [capturedImage, setCapturedImage] = useState(null);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [error, setError] = useState(null);
+  const recipeDetail = location.state.recipe;
 
   const handleExpand = (instructionId) => {
     setExpandedId(expandedId === instructionId ? null : instructionId);
@@ -102,21 +105,45 @@ export default function RecipeDetail({ recipe }) {
 
   const validateRecipe = async (imageData) => {
     try {
-      console.log(capturedImage);
-      const response = await fetch(`${BACKEND_URL}/api/validate-and-award`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          image: capturedImage,
-          recipeId: "680db68a49d574360be30693",
-          userId: 1,
-        }),
+      // Convert base64 to blob
+      const base64Response = await fetch(imageData);
+      const blob = await base64Response.blob();
+
+      // Compress image
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+        fileType: "image/jpeg",
+      };
+
+      const compressedBlob = await imageCompression(blob, options);
+
+      // Create a File object from the Blob
+      const imageFile = new File([compressedBlob], "image.jpg", {
+        type: "image/jpeg",
       });
 
-      const data = await response.json();
+      // Create FormData and append fields
+      const formData = new FormData();
+      formData.append("image", imageFile); // Flask expects 'file' in request.files
+      formData.append("recipe_id", recipeDetail._id);
+      formData.append("user_id", "680dd0320b92db3a52391bc8");
 
+      console.log("Sending FormData with file size:", imageFile.size);
+
+      const response = await fetch(`${BACKEND_URL}/api/validate-and-award`, {
+        method: "POST",
+        // Let the browser set the correct Content-Type with boundary
+        body: formData,
+        //mode: "no-cors",
+      });
+
+      //const string = await response.text();
+      //console.log(string);
+
+      const data = await response.json();
+      console.log(data);
       if (data.success) {
         setButtonState("completed");
       } else {
@@ -238,7 +265,7 @@ export default function RecipeDetail({ recipe }) {
           </h1>
           <div className="flex justify-between items-center">
             <div className="flex flex-col gap-1">
-              <p className="text-gray-600 font-medium">{recipeDetail.time}</p>
+              <p className="text-gray-600 font-medium">45 minutes</p>
               <p className="text-gray-600 font-medium flex items-center gap-2">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -254,7 +281,7 @@ export default function RecipeDetail({ recipe }) {
                     d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                   />
                 </svg>
-                {recipeDetail.serving} servings
+                {recipeDetail.servings} servings
               </p>
             </div>
             <div className="flex flex-col gap-2">
