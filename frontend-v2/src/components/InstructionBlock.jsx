@@ -6,6 +6,11 @@ export default function InstructionBlock({
 }) {
   if (!instruction) return null;
 
+  // Build the video URL if a videoIndex is given
+  const videoUrl = instruction.videoIndex !== undefined
+    ? `http://localhost:5001/videos/vid${instruction.videoIndex}.mp4`
+    : null;
+
   return (
     <div className="mb-4">
       <button
@@ -40,30 +45,38 @@ export default function InstructionBlock({
 
       {isExpanded && (
         <div className="mt-4 bg-white rounded-xl p-6 shadow-lg">
-          <div className="aspect-video bg-gray-200 rounded-lg">
-            {/* Video placeholder - would be replaced with actual video */}
-            <div className="w-full h-full flex items-center justify-center text-gray-500">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-12 h-12"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
+          <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden">
+            {videoUrl ? (
+              <video
+                src={videoUrl}
+                controls
+                className="w-full h-full object-cover rounded-lg"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-500">
+                {/* fallback SVG if no video */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-12 h-12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+            )}
           </div>
         </div>
       )}

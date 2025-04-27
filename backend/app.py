@@ -4,7 +4,7 @@ import sys
 from dotenv import load_dotenv
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig, HarmCategory, HarmBlockThreshold
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory, abort, Response
 from flask_cors import CORS # Import CORS
 from werkzeug.utils import secure_filename
 import base64
@@ -438,6 +438,10 @@ def register_user():
         print(f"Error in /api/register-user: {e}")
         return jsonify({"error": f"An internal server error occurred: {e}"}), 500
 
+@app.route('/videos/<path:filename>')
+def get_video(filename):
+    video_folder = os.path.join(os.getcwd(), 'videos')
+    return send_from_directory(video_folder, filename)
 
 @app.route('/api/validate-and-award', methods=['POST'])
 def validate_and_award():
@@ -509,6 +513,22 @@ def get_points(user_id):
 
 @app.route('/api/get-user', methods=['GET'])
 def get_user():
+    name = request.args.get('name')
+    if not name:
+        return jsonify({'error': 'Missing name'}), 400
+
+    user = users_collection.find_one({'name': name})
+    if user:
+        user['_id'] = str(user['_id'])  # Convert ObjectId to string
+        return jsonify({'user': user}), 200
+    else:
+        return jsonify({'user': None}), 200
+    
+
+
+
+@app.route('/api/get-image', methods=['GET'])
+def get_image(recipe):
     name = request.args.get('name')
     if not name:
         return jsonify({'error': 'Missing name'}), 400
