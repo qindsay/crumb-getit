@@ -36,27 +36,26 @@ function WebcamCapture({ setFilepath }) {
 
             const response = await fetch(`${BACKEND_URL}/api/use-photo`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: formData,
             });
-            
-            console.log("print response")
-            console.log(response)
 
             if (!response.ok) {
             // Read the body ONCE as text first.
-            const errorText = await response.text();
-            let errorMsg = `HTTP error ${response.status}: ${errorText}`;
-            try {
-                // Try to parse the text as JSON for a more specific error message
-                const errorJson = JSON.parse(errorText);
-                errorMsg = `HTTP error ${response.status}: ${errorJson.error || errorText}`;
-            } catch (parseError) {
-                // If it's not JSON, use the raw text.
-            }
+              const errorText = await response.text();
+              let errorMsg = `HTTP error ${response.status}: ${errorText}`;
+              try {
+                  // Try to parse the text as JSON for a more specific error message
+                  const errorJson = JSON.parse(errorText);
+                  errorMsg = `HTTP error ${response.status}: ${errorJson.error || errorText}`;
+              } catch (parseError) {
+                  // If it's not JSON, use the raw text.
+              }
             throw new Error(errorMsg);
+            }
             
-      }
+            const data = await response.json();
+            setFilepath(data['filepath'])
+        
         } catch (error) {
             console.error('Error sending photo:', error);
         } finally {

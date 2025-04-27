@@ -103,14 +103,17 @@ function App() {
     setScore(0)
     setChatHistory([]); // Clear chat on new recipe
 
+    console.log("here");
     if (isPhotoMode) {
+      console.log("hello");
       const response = await(`${BACKEND_URL}/api/recognize-ingredients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ BACKEND_URL })
+        body: JSON.stringify({ "backend": BACKEND_URL, "filepath": filepath })
       });
-      console.log(response)
-      // setIngredients //fix
+      const text = await response.text;
+      // const data = await response.json();
+      console.log(text);
     }
 
     console.log("Sending recipe request:", { ingredients, cuisine }); // Log request data

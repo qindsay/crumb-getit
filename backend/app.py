@@ -4,7 +4,7 @@ import sys
 from dotenv import load_dotenv
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig, HarmCategory, HarmBlockThreshold
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS # Import CORS
 import time
 from PIL import Image  # Use PIL (Pillow) to process the image in memory
@@ -481,20 +481,16 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 @app.route('/api/use-photo', methods=['POST']) #scans image and outputs ingredients
 def api_use_photo():
     if not request:
-        return 'No file part', 400
+        return 'Bad request', 400
 
-    file = request.files['file']
-    if file:
-        img = Image.open(file.stream)  # Open image from the file stream
+    if 'file' in request.files:
+        img = Image.open(request.files['file'].stream)  # Open image from the file stream
         # Generate a unique filename for the image
         filename = f"{time.time()}.png"  # Create a unique file name
         file_path = os.path.join(UPLOAD_FOLDER, filename)
 
         # Ensure the upload folder exists
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        print("hello")
-        print(file_path)
-
         
         # Save the image to the local directory
         img.save(file_path, format="PNG")
@@ -507,16 +503,18 @@ def api_use_photo():
 def api_recognize_ingredients():
     try:
         data = request.get_json()
-        if not data or 'BACKEND_URL' not in data:
+        if not data or 'backend' not in data or 'filepath' not in data:
             return jsonify({"error": "Bad Request"}), 400
         
-        backend_url = data['BACKEND_URL']
-        image = backend_url + '/' + uploads
-
+        backend_url = data['backend']
+        filepath = data['filepath']
+        image_path = backend_url + '/' + filepath
+        
+        ingredients = find_ingredients(image_path)
+        return jsonify({"ingredients": ingredients}) #not sure if it's ingredients json
     except Exception as e:
         print(f"Error in /api/recognize-ingredients: {e}") # Log exception
         return jsonify({"error": f"An internal server error occurred: {e}"}), 500
-            
     
 # --- Run Flask App ---
 if __name__ == '__main__':
