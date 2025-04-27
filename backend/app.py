@@ -410,6 +410,9 @@ def api_chat():
         # chat_history = data.get('history', None) # Uncomment if sending history
 
         if not isinstance(user_message, str) or not isinstance(recipe_json, dict) or not isinstance(personality, str):
+             print(user_message)
+             print(recipe_json)
+             print(personality)
              return jsonify({"error": "Invalid data types for 'message', 'recipe', or 'personality'"}), 400
 
 
