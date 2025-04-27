@@ -463,7 +463,7 @@ export default function RecipeDetail() {
             {recipeDetail.instructions.map((instruction, index) => (
               <InstructionBlock
                 key={index}
-                instruction={{ ...instruction, videoIndex: index + 1 }}
+                instruction={instruction}
                 stepNumber={index + 1}
                 isExpanded={expandedId === index}
                 onToggle={() => handleExpand(index)}

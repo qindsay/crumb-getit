@@ -95,7 +95,7 @@ safety_settings = {
 # --- Core Logic Functions ---
 
 # Function to generate recipe (adapted for Flask context)
-def generate_recipe_logic(ingredients, cuisine, camera):
+def generate_recipe_logic(ingredients, cuisine):
     """
     Generates a recipe using the Gemini API based on the provided ingredients and cuisine,
     enforcing JSON output using GenerationConfig.
@@ -111,13 +111,7 @@ def generate_recipe_logic(ingredients, cuisine, camera):
 
     # Build ingredient list string
     print(ingredients)
-    if not camera:
-        ingredient_list = "\n".join(
-            f"- {i.get('amount', '')} {i.get('unit', '')} {i.get('name', 'Unknown Ingredient')}".strip()
-            for i in ingredients
-        )
-    else:
-        ingredient_list = ingredients
+    ingredient_list = ingredients
     
     print(ingredient_list)
 
@@ -154,7 +148,8 @@ def generate_recipe_logic(ingredients, cuisine, camera):
     try:
         model = genai.GenerativeModel('gemini-2.5-flash-preview-04-17')
         generation_config = GenerationConfig(
-            response_mime_type="application/json"
+            response_mime_type="application/json",
+            temperature=0.0
         )
         response = model.generate_content(
             prompt,
@@ -349,9 +344,10 @@ def delete_recipe(recipe_id):
         return jsonify({"error": "Recipe not found"}), 404
     return jsonify({"message": "Recipe deleted successfully"}), 200
 
+"""
 @app.route('/api/generate-recipe', methods=['POST'])
 def api_generate_recipe():
-    """API endpoint to generate a recipe."""
+  #API endpoint to generate a recipe.
     try:
         data = request.get_json()
         
@@ -379,7 +375,36 @@ def api_generate_recipe():
     except Exception as e:
         print(f"Error in /api/generate-recipe: {e}") # Log exception
         return jsonify({"error": f"An internal server error occurred: {e}"}), 500
-    
+  """
+@app.route('/api/generate-recipe', methods=['POST'])
+def api_generate_recipe():
+    """API endpoint to generate a recipe."""
+    try:
+        data = request.get_json()
+        if not data or 'ingredients' not in data or 'cuisine' not in data:
+            return jsonify({"error": "Missing 'ingredients' or 'cuisine' in request body"}), 400
+
+        ingredients = data['ingredients']
+        cuisine = data['cuisine']
+
+        if not isinstance(ingredients, list) or not isinstance(cuisine, str):
+             return jsonify({"error": "Invalid data types for 'ingredients' (must be list) or 'cuisine' (must be string)"}), 400
+
+        print(f"Received recipe request: Cuisine={cuisine}, Ingredients={len(ingredients)}") # Log request
+        recipe = generate_recipe_logic(ingredients, cuisine)
+
+        if recipe:
+            print("Recipe generated successfully.") # Log success
+            return jsonify(recipe)
+        else:
+            print("Failed to generate recipe (logic function returned None).") # Log failure
+            return jsonify({"error": "Failed to generate recipe"}), 500
+
+    except Exception as e:
+        print(f"Error in /api/generate-recipe: {e}") # Log exception
+        return jsonify({"error": f"An internal server error occurred: {e}"}), 500
+
+  
 @app.route('/api/score-recipe', methods=['POST'])
 def api_score_recipe():
     """API endpoint to score a recipe."""
