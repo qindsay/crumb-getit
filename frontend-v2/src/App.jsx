@@ -13,7 +13,6 @@ import SignIn from "./pages/SignIn";
 import Home from "./pages/Home";
 import CreateRecipe from "./pages/CreateRecipe";
 import RecipeDetail from "./pages/RecipeDetail";
-import PastMeals from "./pages/PastMeals";
 import Leaderboard from "./pages/Leaderboard";
 import ChefChat from "./pages/ChefChat";
 import MobileNav from "./components/MobileNav";
@@ -24,7 +23,6 @@ function AppContent() {
     "/home",
     "/create-recipe",
     "/recipe/1",
-    "/past-meals",
     "/leaderboard",
     "/chef-chat",
   ];
@@ -44,7 +42,6 @@ function AppContent() {
         <Route path="/home" element={<Home />} />
         <Route path="/create-recipe" element={<CreateRecipe />} />
         <Route path="/recipe/:id" element={<RecipeDetail />} />
-        <Route path="/past-meals" element={<PastMeals />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/chef-chat" element={<ChefChat />} />
       </Routes>
