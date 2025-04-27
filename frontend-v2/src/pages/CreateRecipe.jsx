@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
 import WebcamModal from "../components/WebcamModal";
 import { useNavigate } from "react-router-dom";
+const BACKEND_URL = "http://127.0.0.1:5001"; // Use http://localhost:5001 if 127.0.0.1 doesn't work
 
 export default function CreateRecipe() {
-  const [ingredients, setIngredients] = useState("");
+  const [ingredients, setIngredients] = useState([]);
   const [cuisine, setCuisine] = useState("");
   const [isWebcamOpen, setIsWebcamOpen] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
@@ -16,20 +17,47 @@ export default function CreateRecipe() {
   const handleCapture = useCallback((imageSrc) => {
     setCapturedImage(imageSrc);
     setIsLoading(true);
-    setIngredients("");
+    setIngredients([]);
 
-    setTimeout(() => {
+    /*setTimeout(() => {
       setIngredients(
         "2 tomatoes\n1 onion\n3 cloves of garlic\n1 bell pepper\nfresh basil",
       );
       setIsLoading(false);
-    }, 3000);
+    }, 3000);*/
   }, []);
 
   const navigate = useNavigate();
 
-  const handleNext = () => {
-    navigate("/recipe/1");
+  
+  const handleNext = async () => {
+    try {
+      console.log(JSON.stringify({
+        ingredients: ingredients,
+        cuisine: cuisine,
+      }));
+      const response = await fetch(`${BACKEND_URL}/api/generate-recipe`, {
+        method: 'POST', // or 'GET', depending on your API
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ingredients: ingredients,
+          cuisine: cuisine,
+        })
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to generate recipe');
+      }
+  
+      const data = await response.json(); // if you want the result
+      console.log('Recipe generated:', data);
+  
+      navigate('/recipe/1', {state: {recipe: data}});
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   return (
@@ -112,8 +140,21 @@ export default function CreateRecipe() {
               </p>
             </div>
             <textarea
-              value={ingredients}
-              onChange={(e) => setIngredients(e.target.value)}
+              value={ingredients.map(i => `${i.amount || ''} ${i.unit || ''} ${i.name || ''}`.trim()).join('\n')}
+              onChange={(e) => {
+                const lines = e.target.value.split('\n');
+                const newIngredients = lines.map(line => {
+                  const parts = line.trim().match(/^([\d./\s]*)\s*([a-zA-Z]*)\s*(.*)$/);
+                  // Basic parsing, might need refinement
+                  return {
+                    amount: parts?.[1]?.trim() || '',
+                    unit: parts?.[2]?.trim() || '',
+                    name: parts?.[3]?.trim() || ''
+                  };
+                }).filter(i => i.name); // Filter out empty lines
+                setIngredients(newIngredients);
+              }}
+              rows={ingredients.length + 1}
               placeholder="Enter your ingredients..."
               disabled={isLoading}
               className={`w-full px-6 py-4 text-lg bg-white text-gray-900 rounded-xl border ${

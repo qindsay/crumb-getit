@@ -7,8 +7,8 @@ export default function InstructionBlock({
   if (!instruction) return null;
 
   // Build the video URL if a videoIndex is given
-  const videoUrl = instruction.videoIndex !== undefined
-    ? `http://localhost:5001/videos/vid${instruction.videoIndex}.mp4`
+  const videoUrl = stepNumber !== undefined
+    ? `http://localhost:5001/videos/vid${stepNumber}.mp4`
     : null;
 
   return (
@@ -22,7 +22,7 @@ export default function InstructionBlock({
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               Step {stepNumber}
             </h3>
-            <p className="text-sm text-gray-600">{instruction.instruction}</p>
+            <p className="text-sm text-gray-600">{instruction}</p>
           </div>
           <svg
             xmlns="http://www.w3.org/2000/svg"
