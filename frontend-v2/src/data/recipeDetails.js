@@ -32,7 +32,7 @@ export const recipeDetail = {
       video_url: "URL_FINAL_TOSS",
     },
   ],
-  image: "/src/assets/chocolate_lava.png",
+  image: "/src/assets/avatar_placeholder.png",
   time: "30 min",
   score: 85,
 };

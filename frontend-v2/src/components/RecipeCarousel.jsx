@@ -63,7 +63,7 @@ export default function RecipeCarousel({ recipes = [] }) {
               <div className="w-3/4 sm:w-1/2 aspect-[4/3] relative">
                 <div className="relative">
                   <img
-                    src="/src/assets/chocolate_lava.png"
+                    src="/src/assets/avatar_placeholder.png"
                     alt={recipes[currentIndex].recipe_name}
                     className="w-full h-full object-contain"
                   />

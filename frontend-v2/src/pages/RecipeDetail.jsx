@@ -255,7 +255,7 @@ export default function RecipeDetail() {
         <div className="mb-8">
           <div className="aspect-[4/3] w-3/4 mx-auto mb-6">
             <img
-              src={recipeDetail.image}
+              src={"/src/assets/avatar_placeholder.png"}
               alt={recipeDetail.name}
               className="w-full h-full object-cover rounded-2xl"
             />
