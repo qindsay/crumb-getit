@@ -52,7 +52,7 @@ export default function Home() {
       <div className="w-full max-w-[1112px] mx-auto px-4 pt-8 sm:pt-16">
         <div className="mb-6">
           <h1 className="text-3xl sm:text-4xl font-bold text-primary-300">
-            Hello, Name
+            Hello!
           </h1>
         </div>
 

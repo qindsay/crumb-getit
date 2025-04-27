@@ -24,7 +24,7 @@ export const leaderboardData = [
   },
   {
     id: 4,
-    name: "Name", // Current user
+    name: "You", // Current user
     score: 125.7,
     avatar: "🌎",
     rank: 4,

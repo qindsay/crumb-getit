@@ -113,11 +113,6 @@ export default function Leaderboard() {
                       >
                         {user.name}
                       </h3>
-                      {isCurrentUser && (
-                        <span className="text-sm text-primary-200 font-medium">
-                          That's you!
-                        </span>
-                      )}
                     </div>
                   </div>
 
