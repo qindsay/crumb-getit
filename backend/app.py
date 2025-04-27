@@ -187,7 +187,7 @@ def score_recipe(recipe):
     Formula: Sustainability Score = (weight_carbon * carbon_subscore) + (weight_land * land_subscore) + 
     (weight_water * water_subscore) + (weight_antibiotics * antibiotics_subscore) + (weight_soil * soil_subscore). 
     weight_carbon = 0.3, weight_land = 0.15, weight_water = 0.15, weight_antibiotics = 0.25, weight_soil = 0.15.
-    Use web data to calculate subscores, give a score out of 10. Only output the score in this exact JSON format. 
+    Use web data to calculate subscores, give a score out of 10, where 10 is positively impactful and 1 is negatively impatful. Only output the score in this exact JSON format. 
     The JSON object must follow this exact structure: 
     { 
       "score": <float>
@@ -216,7 +216,7 @@ def find_ingredients(file):
     textPrompt = f"""
         You are a fridge expert, and someone has given you an image of their fridge. 
         Tell them how much of each ingredient is in their fridge. Output only a list of ingredients in this exact format: 
-        <name> <amont> <unit> \n
+        <name> <amount> <unit> \n
         """
         
     try:
