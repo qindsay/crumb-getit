@@ -40,9 +40,10 @@ function App() {
   const [error, setError] = useState(null);
   const [camera, setCamera] = useState(false)
   const [validationImage, setValidationImage] = useState(null);
-const [validationResult, setValidationResult] = useState(null);
-const [isValidatingRecipe, setIsValidatingRecipe] = useState(false);
-
+  const [validationResult, setValidationResult] = useState(null);
+  const [isValidatingRecipe, setIsValidatingRecipe] = useState(false);
+  const [isPhotoMode, setIsPhotoMode] = useState(false);
+  const [filepath, setFilepath] = useState("")
 
   // --- Available Personalities (matches Python keys/names) ---
   const personalities = [
@@ -55,100 +56,45 @@ const [isValidatingRecipe, setIsValidatingRecipe] = useState(false);
   ];
 
   // --- API Call Functions ---
+  const handleValidateRecipe = async (e) => {
+    e.preventDefault();
+    if (!validationImage || !recipe) return;
 
+    setIsValidatingRecipe(true);
+    setValidationResult(null);
 
-const handleValidateRecipe = async (e) => {
-  e.preventDefault();
-  if (!validationImage || !recipe) return;
+    try {
+      // Compress the image BEFORE uploading
+      const options = {
+        maxSizeMB: 0.5,           // target max size: 0.5 MB (very small!)
+        maxWidthOrHeight: 800,    // resize to max 800px width or height
+        useWebWorker: true        // speed up compression
+      };
+      const compressedFile = await imageCompression(validationImage, options);
 
-  setIsValidatingRecipe(true);
-  setValidationResult(null);
+      // Prepare FormData
+      const formData = new FormData();
+      formData.append('image', compressedFile);  // Use compressed image!
+      formData.append('recipe', recipe.recipe_name || 'Unknown Dish');
 
-  try {
-    // Compress the image BEFORE uploading
-    const options = {
-      maxSizeMB: 0.5,           // target max size: 0.5 MB (very small!)
-      maxWidthOrHeight: 800,    // resize to max 800px width or height
-      useWebWorker: true        // speed up compression
-    };
-    const compressedFile = await imageCompression(validationImage, options);
+      const response = await fetch(`${BACKEND_URL}/api/validate-recipe`, {
+        method: 'POST',
+        body: formData,
+      });
 
-    // Prepare FormData
-    const formData = new FormData();
-    formData.append('image', compressedFile);  // Use compressed image!
-    formData.append('recipe', recipe.recipe_name || 'Unknown Dish');
-
-    const response = await fetch(`${BACKEND_URL}/api/validate-recipe`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    const data = await response.json();
-    if (response.ok) {
-      setValidationResult({ success: data.success, message: data.message });
-    } else {
-      setValidationResult({ success: false, message: data.message || 'Validation failed.' });
+      const data = await response.json();
+      if (response.ok) {
+        setValidationResult({ success: data.success, message: data.message });
+      } else {
+        setValidationResult({ success: false, message: data.message || 'Validation failed.' });
+      }
+    } catch (error) {
+      console.error('Validation error:', error);
+      setValidationResult({ success: false, message: 'An error occurred during validation.' });
+    } finally {
+      setIsValidatingRecipe(false);
     }
-  } catch (error) {
-    console.error('Validation error:', error);
-    setValidationResult({ success: false, message: 'An error occurred during validation.' });
-  } finally {
-    setIsValidatingRecipe(false);
-  }
-};
-
-
-  // Function to generate recipe
-  // const handleGenerateRecipe = useCallback(async () => {
-  //   setIsLoadingRecipe(true);
-  //   setError(null);
-  //   setRecipe(null); // Clear previous recipe
-  //   setChatHistory([]); // Clear chat on new recipe
-
-  //   console.log("Sending recipe request:", { ingredients, cuisine }); // Log request data
-
-  //   try {
-  //     // Use the BACKEND_URL constant
-  //     const response1 = await fetch(`${BACKEND_URL}/api/generate-recipe`, {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({ ingredients, cuisine }),
-  //     });
-
-  //      console.log("Recipe response status:", response1.status); // Log response status
-
-  //     if (!response1.ok) {
-  //       // --- Error Handling Fix ---
-  //       // Read the body ONCE as text first.
-  //       const errorText = await response1.text();
-  //       let errorMsg = `HTTP error ${response1.status}: ${errorText}`;
-  //       try {
-  //           // Try to parse the text as JSON for a more specific error message
-  //           const errorJson = JSON.parse(errorText);
-  //           errorMsg = `HTTP error ${response1.status}: ${errorJson.error || errorText}`;
-  //       } catch (parseError) {
-  //           // If it's not JSON, use the raw text.
-  //           // errorMsg is already set to the text content.
-  //       }
-  //       throw new Error(errorMsg);
-  //       // --- End Error Handling Fix ---
-  //     }
-      
-  //     const data = await response1.json();
-  //     console.log("Recipe received:", data); // Log received data
-  //     setRecipe(data);
-
-  //     let initialMessage = `Right, let's get cooking this ${data.recipe_name || 'dish'}! What's your first question?`;
-  //     setChatHistory([{ sender: 'assistant', message: initialMessage }]);
-
-  //   } catch (err) {
-  //     console.error("Failed to generate recipe:", err);
-  //     // err.message now contains the detailed error from the backend or fetch failure
-  //     setError(`Failed to generate recipe: ${err.message}. Ensure the backend server at ${BACKEND_URL} is running and CORS is enabled.`);
-  //   } finally {
-  //     setIsLoadingRecipe(false);
-  //   }
-  // }, [ingredients, cuisine]); // Dependencies for useCallback
+  };
 
   const handleGenerateRecipe = useCallback(async () => {
     setIsLoadingRecipe(true);
@@ -156,6 +102,16 @@ const handleValidateRecipe = async (e) => {
     setRecipe(null); // Clear previous recipe
     setScore(0)
     setChatHistory([]); // Clear chat on new recipe
+
+    if (isPhotoMode) {
+      const response = await(`${BACKEND_URL}/api/recognize-ingredients`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ BACKEND_URL })
+      });
+      console.log(response)
+      // setIngredients //fix
+    }
 
     console.log("Sending recipe request:", { ingredients, cuisine }); // Log request data
 
@@ -234,9 +190,7 @@ const handleValidateRecipe = async (e) => {
     } finally {
       setIsLoadingRecipe(false);
     }
-  }, [ingredients, cuisine]); // Dependencies for useCallback
-
-  
+  }, [ingredients, cuisine, isPhotoMode]); // Dependencies for useCallback
 
   // Function to send chat message
   const handleSendMessage = useCallback(async () => {
@@ -310,21 +264,28 @@ const handleValidateRecipe = async (e) => {
   // --- Render ---
   return (
     <div className="container mx-auto p-4 font-sans bg-gray-50 min-h-screen flex flex-col md:flex-row gap-4">
-
       {/* --- Left Panel: Inputs & Recipe --- */}
       <div className="md:w-1/2 space-y-4">
         <h1 className="text-3xl font-bold text-blue-700">Chef Assistant</h1>
-
-        <section className="webcam-section">
+        <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setIsPhotoMode(!isPhotoMode)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md"
+            >
+              {isPhotoMode ? 'Type Ingredient' : 'Add Photo'}
+          </button>
+        
+        {isPhotoMode ? (
+          <section className="webcam-section">
           <button
           onClick={() => setCamera(camera => !camera)}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 text-xl rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 ease-in-out"
           > Take Photo
           </button>
-          {camera && <WebcamCapture />}
-        </section>
-        {/* Ingredients Input (Simplified - could be a more complex component) */}
-        <div className="bg-white p-4 rounded-lg shadow">
+          {camera && <WebcamCapture setFilepath={setFilepath} />}
+          </section>
+          ) : (
+            <div className="bg-white p-4 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-2">Ingredients</h2>
           {/* Make ingredients editable - Example using textarea */}
            <textarea
@@ -347,8 +308,13 @@ const handleValidateRecipe = async (e) => {
              placeholder="Enter ingredients: e.g., 2 lbs chicken breast"
            />
            <p className="text-xs text-gray-500 mt-1">Enter one ingredient per line (amount unit name).</p>
-        </div>
+            </div>
+          )}
+          </div>
 
+        
+        {/* Ingredients Input (Simplified - could be a more complex component) */}
+        
         {/* Cuisine Input */}
         <div className="bg-white p-4 rounded-lg shadow">
           <label htmlFor="cuisine" className="block text-xl font-semibold mb-2">Cuisine</label>

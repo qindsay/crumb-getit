@@ -18,8 +18,6 @@ import google.genai as otherGenAi
 import requests
 
 
-
-
 # HUGGINGFACE_API_TOKEN = "your_huggingface_token_here"  # Replace with your actual token
 # HUGGINGFACE_MODEL_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base"
 
@@ -85,10 +83,6 @@ safety_settings = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
 }
 
-models = genai.list_models()
-
-for model in models:
-    print(model.name, model.supported_generation_methods)
 # --- Core Logic Functions ---
 
 # Function to generate recipe (adapted for Flask context)
@@ -143,7 +137,7 @@ def generate_recipe_logic(ingredients, cuisine):
     """
 
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        model = genai.GenerativeModel('gemini-2.5-flash-preview-04-17')
         generation_config = GenerationConfig(
             response_mime_type="application/json"
         )
@@ -201,6 +195,42 @@ def score_recipe(recipe):
     
     return json.loads(response.text)
 
+def find_ingredients(file):
+    image_bytes = None
+    with open(file, 'rb') as newfile:
+        # Read the contents
+        # contents = file.read()
+        image_bytes = newfile.read()
+    
+    image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+
+    # Build prompt
+    textPrompt = f"""
+        You are a fridge expert, and someone has given you an image of their fridge. 
+        Tell them how much of each ingredient is in their fridge. Output only ingredients in this exact format: amount unit name
+        """
+    
+    imageContent = base64.b64decode(image_base64)
+    
+    try:
+        client = otherGenAi.Client(api_key=API_KEY)
+        
+        response = client.models.generate_content(
+            model = 'gemini-2.5-flash-preview-04-17',
+            contents=[
+                textPrompt, 
+                types.Part.from_bytes(
+                    data=imageContent,
+                    mime_type='image/jpeg',
+                ),
+            ]
+        )
+        return jsonify(response.text)
+        
+    except Exception as e:
+        print(f"Error: Failed to detect ingredients: {e}")
+        return None
+    
 def parse_recipe_strings(raw_data):
     if not raw_data or not isinstance(raw_data, dict) or 'recipeData' not in raw_data:
         raise ValueError('Invalid recipe data format.')
@@ -254,7 +284,7 @@ def get_chat_response_logic(user_message, recipe_json, personality_name, chat_hi
     try:
         # Initialize the model WITH the system instruction for context
         model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash-latest',
+            model_name='gemini-2.5-flash-preview-04-17',
             system_instruction=system_instruction,
             # safety_settings=safety_settings # Apply safety settings here too
         )
@@ -323,7 +353,6 @@ def api_score_recipe():
     """API endpoint to score a recipe."""
     try:
         data = request.get_json()
-        print(f"here {data}")
         if not data:
             return jsonify({"error": "Missing 'ingredients_used' or 'instructions' in request body"}), 400
 
@@ -422,7 +451,7 @@ def validate_recipe_completion():
         # print('data:image/jpeg;base64,' +  image_base64)
         client = otherGenAi.Client(api_key=API_KEY)
         response = client.models.generate_content(
-            model = 'gemini-2.0-flash',
+            model = 'gemini-2.5-flash-preview-04-17',
             contents=[
                 textPrompt, 
                 types.Part.from_bytes(
@@ -446,76 +475,48 @@ def validate_recipe_completion():
         print(f"Error in /api/validate-recipe: {e}")
         return jsonify({"error": f"Internal server error: {e}"}), 500
 
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
-
-# @app.route('/api/validate-recipe', methods=['POST'])
-# def validate_recipe_completion():
-#     try:
-#         if 'image' not in request.files or 'recipe' not in request.form:
-#             return jsonify({"error": "Missing image file or recipe text"}), 400
-
-#         file = request.files['image']
-#         recipe_text = request.form['recipe'].strip().lower()
-
-#         if file.filename == '':
-#             return jsonify({"error": "No selected file"}), 400
-
-#         image_bytes = file.read()
-
-#         # Send image to HuggingFace BLIP-2 model
-#         headers = {
-#             "Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"
-#         }
-
-#         response = requests.post(
-#             HUGGINGFACE_MODEL_URL,
-#             headers=headers,
-#             files={"file": image_bytes}
-#         )
-
-#         if response.status_code != 200:
-#             print(f"Error calling HuggingFace API: {response.text}")
-#             return jsonify({"error": "Failed to analyze image"}), 500
-
-#         description = response.json()[0]['generated_text'].strip().lower()
-#         print(f"[DEBUG] HuggingFace Image Description: {description}")
-
-#         # Simple matching logic
-#         if any(word in description for word in recipe_text.split()):
-#             return jsonify({"success": True, "message": "Congratulations! Recipe verified successfully."})
-#         else:
-#             return jsonify({"success": False, "message": "Verification failed. The uploaded dish does not match the recipe."})
-
-#     except Exception as e:
-#         print(f"Error in /api/validate-recipe: {e}")
-#         return jsonify({"error": f"Internal server error: {e}"}), 500
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-@app.route('/api/send-photo', methods=['POST'])
-def send_photo():
-    if 'file' not in request.files:
+@app.route('/api/use-photo', methods=['POST']) #scans image and outputs ingredients
+def api_use_photo():
+    if not request:
         return 'No file part', 400
 
     file = request.files['file']
-    if file and allowed_file(file.filename):
-        # Process the file directly in memory
+    if file:
         img = Image.open(file.stream)  # Open image from the file stream
+        # Generate a unique filename for the image
+        filename = f"{time.time()}.png"  # Create a unique file name
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
 
-        # You can now process the image in memory (resize, analyze, etc.)
-        # For example, here is how you might save it temporarily to memory:
-        img_bytes = BytesIO()
-        img.save(img_bytes, format="PNG")
-        img_bytes.seek(0)  # Go to the beginning of the in-memory file
+        # Ensure the upload folder exists
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        print("hello")
+        print(file_path)
 
-        # Example: Perform any additional processing, storage, or sending the image
-        # If needed, you can send this `img_bytes` to other services or store it in a cloud.
+        
+        # Save the image to the local directory
+        img.save(file_path, format="PNG")
 
-        return 'Photo processed successfully!', 200
+        return jsonify({"filepath": file_path})
+    else:
+        return 'Invalid file type', 400
 
-    return 'Invalid file type', 400
+@app.route('/api/recognize-ingredients', methods=['POST']) #scans image and outputs ingredients
+def api_recognize_ingredients():
+    try:
+        data = request.get_json()
+        if not data or 'BACKEND_URL' not in data:
+            return jsonify({"error": "Bad Request"}), 400
+        
+        backend_url = data['BACKEND_URL']
+        image = backend_url + '/' + uploads
 
+    except Exception as e:
+        print(f"Error in /api/recognize-ingredients: {e}") # Log exception
+        return jsonify({"error": f"An internal server error occurred: {e}"}), 500
+            
     
 # --- Run Flask App ---
 if __name__ == '__main__':
