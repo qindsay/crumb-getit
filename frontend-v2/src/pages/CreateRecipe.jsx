@@ -1,12 +1,19 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import VoiceInputModal from "../components/VoiceInputModal";
 import { useNavigate } from "react-router-dom";
 
 export default function CreateRecipe() {
   const [ingredients, setIngredients] = useState("");
 
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+
   const handleMicrophoneClick = () => {
-    setIngredients((prev) => prev + " eggs, milk, flour");
+    setIsVoiceModalOpen(true);
   };
+
+  const handleVoiceTranscript = useCallback((transcript) => {
+    setIngredients(transcript);
+  }, []);
 
   const handleCameraClick = () => {
     setIngredients((prev) => prev + " tomatoes, onions, garlic");
@@ -29,35 +36,10 @@ export default function CreateRecipe() {
       <div className="w-full px-4 flex-1 flex items-center justify-center">
         <div className="w-full max-w-3xl bg-gray-50 rounded-3xl p-8">
           {/* Input Methods */}
-          <div className="grid grid-cols-2 gap-8 mb-8">
-            <button
-              onClick={handleMicrophoneClick}
-              className="flex flex-col items-center gap-3 p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border-2 border-transparent hover:border-primary-300"
-            >
-              <div className="w-20 h-20 flex items-center justify-center rounded-full bg-primary-300 text-white">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-10 h-10"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                  />
-                </svg>
-              </div>
-              <span className="text-sm font-medium text-primary-300">
-                Voice Input
-              </span>
-            </button>
-
+          <div className="grid grid-cols-1 gap-8 mb-8">
             <button
               onClick={handleCameraClick}
-              className="flex flex-col items-center gap-3 p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border-2 border-transparent hover:border-primary-300"
+              className="w-full flex flex-col items-center gap-3 p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border-2 border-transparent hover:border-primary-300"
             >
               <div className="w-20 h-20 flex items-center justify-center rounded-full bg-primary-300 text-white">
                 <svg
@@ -115,6 +97,11 @@ export default function CreateRecipe() {
           </button>
         </div>
       </div>
+      <VoiceInputModal
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        onTranscript={handleVoiceTranscript}
+      />
     </div>
   );
 }

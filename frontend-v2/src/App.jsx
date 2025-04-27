@@ -14,6 +14,7 @@ import CreateRecipe from "./pages/CreateRecipe";
 import RecipeDetail from "./pages/RecipeDetail";
 import PastMeals from "./pages/PastMeals";
 import Leaderboard from "./pages/Leaderboard";
+import ChefChat from "./pages/ChefChat";
 import MobileNav from "./components/MobileNav";
 
 function AppContent() {
@@ -24,6 +25,7 @@ function AppContent() {
     "/recipe/1",
     "/past-meals",
     "/leaderboard",
+    "/chef-chat",
   ];
   const shouldShowHeader = !noHeaderPaths.some(
     (path) =>
@@ -31,7 +33,7 @@ function AppContent() {
   );
 
   return (
-    <div className="min-h-screen w-full bg-white">
+    <div className="min-h-screen min-w-screen w-full bg-white">
       {shouldShowHeader && <Header />}
       <Routes>
         <Route path="/" element={<LandingPage />} />
@@ -43,6 +45,7 @@ function AppContent() {
         <Route path="/recipe/:id" element={<RecipeDetail />} />
         <Route path="/past-meals" element={<PastMeals />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/chef-chat" element={<ChefChat />} />
       </Routes>
       <MobileNav />
     </div>
