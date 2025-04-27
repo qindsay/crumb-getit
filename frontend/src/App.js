@@ -76,6 +76,10 @@ function App() {
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [error, setError] = useState(null);
   const [camera, setCamera] = useState(false)
+  const [userId, setUserId] = useState(null); // User MongoDB _id
+  const [userName, setUserName] = useState(''); // Name input (optional)
+const [userPoints, setUserPoints] = useState(0); // User total points
+
   const [validationImage, setValidationImage] = useState(null);
   const [validationResult, setValidationResult] = useState(null);
   const [isValidatingRecipe, setIsValidatingRecipe] = useState(false);
@@ -93,45 +97,78 @@ function App() {
   ];
 
   // --- API Call Functions ---
-  const handleValidateRecipe = async (e) => {
-    e.preventDefault();
-    if (!validationImage || !recipe) return;
+ const handleValidateRecipe = async (e) => {
+  e.preventDefault();
+  if (!validationImage || !recipe || !userId) return;
 
-    setIsValidatingRecipe(true);
-    setValidationResult(null);
+  setIsValidatingRecipe(true);
+  setValidationResult(null);
 
-    try {
-      // Compress the image BEFORE uploading
-      const options = {
-        maxSizeMB: 0.5,           // target max size: 0.5 MB (very small!)
-        maxWidthOrHeight: 800,    // resize to max 800px width or height
-        useWebWorker: true        // speed up compression
-      };
-      const compressedFile = await imageCompression(validationImage, options);
+  try {
+    const options = {
+      maxSizeMB: 0.5,
+      maxWidthOrHeight: 800,
+      useWebWorker: true
+    };
+    const compressedFile = await imageCompression(validationImage, options);
 
-      // Prepare FormData
-      const formData = new FormData();
-      formData.append('image', compressedFile);  // Use compressed image!
-      formData.append('recipe', recipe.recipe_name || 'Unknown Dish');
+    const formData = new FormData();
+    formData.append('image', compressedFile);
+    formData.append('recipe_id', recipe._id);
+    formData.append('user_id', userId); // <-- Include the user ID here!
 
-      const response = await fetch(`${BACKEND_URL}/api/validate-recipe`, {
-        method: 'POST',
-        body: formData,
-      });
+    for (const [key, value] of formData.entries()) {
+  console.log(key, value);
+}
+  const registerUser = async (name) => {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/register-user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
 
-      const data = await response.json();
-      if (response.ok) {
-        setValidationResult({ success: data.success, message: data.message });
-      } else {
-        setValidationResult({ success: false, message: data.message || 'Validation failed.' });
-      }
-    } catch (error) {
-      console.error('Validation error:', error);
-      setValidationResult({ success: false, message: 'An error occurred during validation.' });
-    } finally {
-      setIsValidatingRecipe(false);
+    const data = await response.json();
+    if (response.ok) {
+      setUserId(data.user_id);
+      setUserPoints(data.total_points);
+      setUserName(name);
+      console.log('User registered:', data);
+    } else {
+      console.error('Failed to register user:', data.error);
     }
-  };
+  } catch (err) {
+    console.error('Error registering user:', err);
+  }
+};
+
+useEffect(() => {
+  registerUser('Chef Enthusiast'); // Or let user type their name
+}, []);
+
+    const response = await fetch(`${BACKEND_URL}/api/validate-and-award`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      setValidationResult({ success: data.success, message: data.message });
+
+      // Update the user's points if validation passed
+      if (data.success && typeof data.new_points !== 'undefined') {
+        setUserPoints(data.new_points);
+      }
+    } else {
+      setValidationResult({ success: false, message: data.message || 'Validation failed.' });
+    }
+  } catch (error) {
+    console.error('Validation error:', error);
+    setValidationResult({ success: false, message: 'An error occurred during validation.' });
+  } finally {
+    setIsValidatingRecipe(false);
+  }
+};
 
   const handleGenerateRecipe = useCallback(async () => {
     setIsLoadingRecipe(true);
@@ -171,41 +208,59 @@ function App() {
       setRecipe(recipeData);
 
       try {
-        console.log('Recipe being sent for scoring:', recipeData);
-  
-        const response2 = await fetch(`${BACKEND_URL}/api/score-recipe`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({recipeData})
-        });
-  
-        if (!response2.ok) {
-          // --- Error Handling Fix ---
-          // Read the body ONCE as text first.
-          const errorText = await response2.text();
-          let errorMsg = `HTTP error ${response2.status}: ${errorText}`;
-          try {
-              // Try to parse the text as JSON for a more specific error message
-              const errorJson = JSON.parse(errorText);
-              errorMsg = `HTTP error ${response2.status}: ${errorJson.error || errorText}`;
-              console.error(errorMsg)
-          } catch (parseError) {
-              // If it's not JSON, use the raw text.
-              // errorMsg is already set to the text content.
-          }
-          throw new Error(errorMsg);
-          // --- End Error Handling Fix ---
-        }
-  
-        const scoreData = await response2.json()
-        console.log("Score received:", scoreData); // Log received data
-        setScore(scoreData['score']);
-  
-      } catch (err) {
-        console.error("Failed to score recipe:", err);
-        // err.message now contains the detailed error from the backend or fetch failure
-        setError(`Failed to score recipe: ${err.message}. Ensure the backend server at ${BACKEND_URL} is running and CORS is enabled.`);
-      }
+  console.log('Recipe being sent for scoring:', recipeData);
+
+  const response2 = await fetch(`${BACKEND_URL}/api/score-recipe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipeData }),
+  });
+
+  if (!response2.ok) {
+    const errorText = await response2.text();
+    let errorMsg = `HTTP error ${response2.status}: ${errorText}`;
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMsg = `HTTP error ${response2.status}: ${errorJson.error || errorText}`;
+      console.error(errorMsg);
+    } catch (parseError) {
+      // If not JSON, just use raw text
+    }
+    throw new Error(errorMsg);
+  }
+
+  const scoreData = await response2.json();
+  console.log("Score received:", scoreData);
+
+  const newScore = scoreData['score']; // ✅ capture score immediately
+
+  // Now SAVE the recipe with the correct score
+  const saveResponse = await fetch(`${BACKEND_URL}/api/save-recipe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...recipeData,
+      score: newScore, // ✅ use newScore directly
+    }),
+  });
+
+  const saveData = await saveResponse.json();
+  if (saveResponse.ok) {
+    console.log("Recipe saved with score:", saveData);
+    setRecipe({ ...recipeData, _id: saveData.id, score: newScore }); // ✅ include _id and score in local state
+  } else {
+    console.error("Failed to save recipe:", saveData.error);
+    setError("Failed to save generated recipe to database.");
+  }
+
+  // Finally update the UI score
+  setScore(newScore);
+
+} catch (err) {
+  console.error("Failed to score or save recipe:", err);
+  setError(`Failed to score or save recipe: ${err.message}. Ensure the backend server at ${BACKEND_URL} is running and CORS is enabled.`);
+}
+
 
       let initialMessage = `Right, let's get cooking this ${recipeData.recipe_name || 'dish'}! What's your first question?`;
       setChatHistory([{ sender: 'assistant', message: initialMessage }]);
@@ -389,6 +444,11 @@ function App() {
             </div>
         )}
 
+        {userId && (
+  <p className="text-green-700 font-semibold">
+    Welcome, {userName}! Current Points: {userPoints}
+  </p>
+)}
 
         {/* Display Recipe */}
         {recipe && !isLoadingRecipe && ( // Only show recipe if not loading and recipe exists

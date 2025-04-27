@@ -16,7 +16,16 @@ import google.generativeai as genai
 from google.genai import types
 import google.genai as otherGenAi
 import requests
+from bson import ObjectId  
 
+from pymongo import MongoClient
+
+# MongoDB setup
+MONGO_URI = os.getenv("MONGO_URI")  # Add this to your .env
+client = MongoClient(MONGO_URI)
+db = client['recipeDB']
+recipes_collection = db['recipes']
+users_collection = db['users']
 
 # HUGGINGFACE_API_TOKEN = "your_huggingface_token_here"  # Replace with your actual token
 # HUGGINGFACE_MODEL_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base"
@@ -229,6 +238,7 @@ def find_ingredients(file):
         print(f"Error: Failed to detect ingredients: {e}")
         return None
     
+
 def parse_recipe_strings(raw_data):
     if not raw_data or not isinstance(raw_data, dict) or 'recipeData' not in raw_data:
         raise ValueError('Invalid recipe data format.')
@@ -316,6 +326,29 @@ def get_chat_response_logic(user_message, recipe_json, personality_name, chat_hi
         return None
 
 # --- Flask API Routes ---
+
+@app.route('/api/save-recipe', methods=['POST'])
+def save_recipe():
+    data = request.get_json()
+    if not data or not all(k in data for k in ("recipe_name", "servings", "ingredients_used", "instructions", "score")):
+        return jsonify({"error": "Invalid recipe data"}), 400
+    result = recipes_collection.insert_one(data)
+    return jsonify({"message": "Recipe saved successfully", "id": str(result.inserted_id)}), 201
+
+@app.route('/api/get-recipes', methods=['GET'])
+def get_recipes():
+    recipes = list(recipes_collection.find())
+    for r in recipes:
+        r['_id'] = str(r['_id'])
+    return jsonify(recipes), 200
+
+@app.route('/api/delete-recipe/<recipe_id>', methods=['DELETE'])
+def delete_recipe(recipe_id):
+    result = recipes_collection.delete_one({'_id': ObjectId(recipe_id)})
+    if result.deleted_count == 0:
+        return jsonify({"error": "Recipe not found"}), 404
+    return jsonify({"message": "Recipe deleted successfully"}), 200
+
 @app.route('/api/generate-recipe', methods=['POST'])
 def api_generate_recipe():
     """API endpoint to generate a recipe."""
@@ -388,6 +421,9 @@ def api_chat():
         # chat_history = data.get('history', None) # Uncomment if sending history
 
         if not isinstance(user_message, str) or not isinstance(recipe_json, dict) or not isinstance(personality, str):
+             print(user_message)
+             print(recipe_json)
+             print(personality)
              return jsonify({"error": "Invalid data types for 'message', 'recipe', or 'personality'"}), 400
 
 
@@ -408,7 +444,34 @@ def api_chat():
     except Exception as e:
         print(f"Error in /api/chat: {e}") # Log exception
         return jsonify({"error": f"An internal server error occurred: {e}"}), 500
-    
+
+@app.route('/api/register-user', methods=['POST'])
+def register_user():
+    """Register a new user and initialize their points."""
+    try:
+        data = request.get_json()
+
+        if not data or 'name' not in data:
+            return jsonify({"error": "Missing 'name' field in request"}), 400
+
+        user = {
+            "name": data['name'],
+            "total_points": 0
+        }
+
+        result = users_collection.insert_one(user)
+
+        return jsonify({
+            "message": "User registered successfully",
+            "user_id": str(result.inserted_id),
+            "name": data['name'],
+            "total_points": 0
+        }), 201
+
+    except Exception as e:
+        print(f"Error in /api/register-user: {e}")
+        return jsonify({"error": f"An internal server error occurred: {e}"}), 500
+
 
 @app.route('/api/validate-and-award', methods=['POST'])
 def validate_and_award():
@@ -439,7 +502,6 @@ def validate_and_award():
 
         Here's the photo of their dish. Reply ONLY with "Match" or "No Match".
     """
-
     client = otherGenAi.Client(api_key=API_KEY)
     response = client.models.generate_content(
         model = 'gemini-2.0-flash',
@@ -448,7 +510,6 @@ def validate_and_award():
             types.Part.from_bytes(data=base64.b64decode(image_base64), mime_type='image/jpeg'),
         ]
     )
-
     if not response.candidates or not response.candidates[0].content or not response.candidates[0].content.parts:
         return jsonify({"error": "Empty model response"}), 500
 
@@ -461,72 +522,35 @@ def validate_and_award():
             {"$inc": {"total_points": points_to_add}}
         )
         return jsonify({"success": True, "message": f"Match! Awarded {points_to_add} points."}), 200
-    
-    return jsonify({"success": False, "message": "No match, no points awarded."}), 200
+    else:
+        return jsonify({"success": False, "message": "No match, no points awarded."}), 200
 
-# @app.route('/api/validate-recipe', methods=['POST'])
-# def validate_recipe_completion():
-#     """
-#     Endpoint to validate if the user's uploaded dish matches the intended recipe.
-#     """
-#     try:
-#         # Check if image file is in request
-#         if 'image' not in request.files or 'recipe' not in request.form:
-#             return jsonify({"error": "Missing image file or recipe text in the request"}), 400
+@app.route('/api/get-points/<user_id>', methods=['GET'])
+def get_points(user_id):
+    """Return the total points of a user."""
+    try:
+        user = users_collection.find_one({'_id': ObjectId(user_id)})
+        if not user:
+            return jsonify({"error": "User not found"}), 404
 
-#         file = request.files['image']
-#         recipe_text = request.form['recipe']  # Recipe text or description they were supposed to make
-#         print(recipe_text)
+        return jsonify({"total_points": user.get('total_points', 0)}), 200
 
-#         if file.filename == '':
-#             return jsonify({"error": "No selected file"}), 400
+    except Exception as e:
+        print(f"Error in /api/get-points: {e}")
+        return jsonify({"error": f"Internal server error: {e}"}), 500
 
-#         # Read and encode image to base64 (for sending into Gemini multimodal API)
-#         image_bytes = file.read()
-#         image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+@app.route('/api/get-user', methods=['GET'])
+def get_user():
+    name = request.args.get('name')
+    if not name:
+        return jsonify({'error': 'Missing name'}), 400
 
-#         # Build prompt
-#         textPrompt = f"""
-#             You are a master chef judging a cooking competition. 
-#             The contestant claims to have made the following dish:
-#             "{recipe_text}"
-
-#             You are given the photo of their final dish (below). 
-#             Please compare the photo with the described dish.
-
-#             Respond ONLY with one word: "Match" if it looks correct or "No Match" if it clearly does not match.
-#             """
-        
-#         imageContent = base64.b64decode(image_base64)
-
-
-#         # Send to Gemini
-#         # print('data:image/jpeg;base64,' +  image_base64)
-#         client = otherGenAi.Client(api_key=API_KEY)
-#         response = client.models.generate_content(
-#             model = 'gemini-2.5-flash-preview-04-17',
-#             contents=[
-#                 textPrompt, 
-#                 types.Part.from_bytes(
-#                     data=imageContent,
-#                     mime_type='image/jpeg',
-#                 ),
-#             ]
-#         )
-#         print(f"response: {response}")
-#         if not response.candidates or not response.candidates[0].content or not response.candidates[0].content.parts:
-#             return jsonify({"error": "Empty or invalid response from Gemini model"}), 500
-
-#         result_text = response.text.strip().lower()
-
-#         if "match" in result_text and "no" not in result_text:
-#             return jsonify({"success": True, "message": "Congratulations! Recipe verified successfully."})
-#         else:
-#             return jsonify({"success": False, "message": "Verification failed. The uploaded dish does not match the recipe."})
-
-#     except Exception as e:
-#         print(f"Error in /api/validate-recipe: {e}")
-#         return jsonify({"error": f"Internal server error: {e}"}), 500
+    user = users_collection.find_one({'name': name})
+    if user:
+        user['_id'] = str(user['_id'])  # Convert ObjectId to string
+        return jsonify({'user': user}), 200
+    else:
+        return jsonify({'user': None}), 200
 
 
 @app.route('/api/recognize-ingredients', methods=['POST']) #scans image and outputs ingredients
