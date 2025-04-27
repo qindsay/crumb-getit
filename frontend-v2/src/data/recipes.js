@@ -33,6 +33,7 @@ export const recipes = [
   {
     id: 1,
     recipe_name: "Creamy Garlic Pasta",
+    cuisine: "Italian",
     serving: 4,
     ingredients_used: [
       { name: "Pasta", amount: "400g" },
@@ -58,6 +59,7 @@ export const recipes = [
   {
     id: 2,
     recipe_name: "Mediterranean Salad",
+    cuisine: "Mediterranean",
     serving: 6,
     ingredients_used: [
       { name: "Mixed Greens", amount: "300g" },

@@ -29,11 +29,20 @@ export default function RecipeCarousel({ recipes }) {
         <div>
           <div className="relative bg-white flex items-center justify-center py-4 sm:py-8 hover:bg-gray-50 transition-colors duration-200">
             <div className="w-3/4 sm:w-1/2 aspect-[4/3] relative">
-              <img
-                src={recipes[currentIndex].image}
-                alt={recipes[currentIndex].recipe_name}
-                className="w-full h-full object-contain"
-              />
+              <div className="relative">
+                <img
+                  src={recipes[currentIndex].image}
+                  alt={recipes[currentIndex].recipe_name}
+                  className="w-full h-full object-contain"
+                />
+                <div className="absolute left-2 top-2">
+                  <div className="px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full shadow-md border border-primary-100/20">
+                    <span className="text-sm font-medium bg-gradient-to-r from-primary-300 to-primary-200 bg-clip-text text-transparent">
+                      {recipes[currentIndex].cuisine}
+                    </span>
+                  </div>
+                </div>
+              </div>
               <div className="absolute top-2 right-2">
                 <div className="group relative">
                   {/* Tooltip */}
