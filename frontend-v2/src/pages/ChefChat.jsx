@@ -2,6 +2,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ChatMessage from "../components/ChatMessage";
 import VoiceInputModal from "../components/VoiceInputModal";
+import { useLocation } from "react-router-dom";
+
 const BACKEND_URL = "http://127.0.0.1:5001"; // Use http://localhost:5001 if 127.0.0.1 doesn't work
 
 const chefs = [
@@ -16,6 +18,8 @@ const chefs = [
 export default function ChefChat() {
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
+  const location = useLocation();
+  const recipe = location.state.recipe;
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollTo({
@@ -48,7 +52,7 @@ export default function ChefChat() {
   const sendMessage = async (messageToSend) => {
     console.log("Sending message...");
     if (!messageToSend.trim()) return; // Don't send empty messages or if no recipe
-    const currentRecipeContext = {}; // Capture current recipe state
+    const currentRecipeContext = recipe; // Capture current recipe state
     const currentPersonality = selectedChef["name"]; // Capture current personality
 
     setMessage(""); // Clear input field immediately

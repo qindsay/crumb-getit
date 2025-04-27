@@ -7,8 +7,9 @@ export default function InstructionBlock({
   if (!instruction) return null;
 
   // Build the video URL if a videoIndex is given
-  const videoUrl = stepNumber !== undefined
-    ? `http://localhost:5001/videos/vid${stepNumber}.mp4`
+  const step = stepNumber - 1
+  const videoUrl = step !== undefined
+    ? `http://localhost:5001/videos/vid${step}.mp4`
     : null;
 
   return (

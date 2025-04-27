@@ -286,7 +286,7 @@ export default function RecipeDetail() {
             </div>
             <div className="flex flex-col gap-2">
               <button
-                onClick={() => navigate("/chef-chat")}
+                onClick={() => navigate("/chef-chat", { state: { recipe: recipeDetail }})}
                 className="flex items-center gap-2 px-4 py-2 bg-primary-50 rounded-lg text-primary-300 hover:bg-primary-100 hover:text-white transition-colors duration-200"
               >
                 <svg
