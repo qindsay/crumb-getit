@@ -142,9 +142,6 @@ const [userPoints, setUserPoints] = useState(0); // User total points
   }
 };
 
-useEffect(() => {
-  registerUser('Chef Enthusiast'); // Or let user type their name
-}, []);
 
     const response = await fetch(`${BACKEND_URL}/api/validate-and-award`, {
       method: 'POST',
