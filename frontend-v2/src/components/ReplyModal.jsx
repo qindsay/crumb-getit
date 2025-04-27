@@ -1,4 +1,30 @@
+import { useEffect } from "react";
+
 export default function ReplyModal({ isOpen, onClose, message }) {
+  useEffect(() => {
+    if (isOpen && message) {
+      const utterance = new SpeechSynthesisUtterance(message);
+      
+      // Try to select a British English male voice (closest to Gordon Ramsay)
+      const voices = window.speechSynthesis.getVoices();
+      const britishVoice = voices.find(
+        (voice) =>
+          voice.lang.includes("en-GB") && voice.name.toLowerCase().includes("male")
+      );
+      
+      console.log(britishVoice)
+      if (britishVoice) {
+        utterance.voice = britishVoice;
+      }
+
+      utterance.pitch = 0.85;   // Normal pitch
+      utterance.rate = 1.2;    // Normal speaking speed
+      utterance.volume = 1;  // Max volume
+
+      window.speechSynthesis.speak(utterance);
+    }
+  }, [isOpen, message]);
+
   if (!isOpen) return null;
 
   return (
@@ -11,7 +37,10 @@ export default function ReplyModal({ isOpen, onClose, message }) {
         <div className="p-4 border-t border-gray-100 bg-white rounded-b-2xl">
           <div className="flex justify-end">
             <button
-              onClick={onClose}
+              onClick={() => {
+                window.speechSynthesis.cancel(); // Stop speaking if modal closes
+                onClose();
+              }}
               className="px-6 py-3 bg-primary-100 text-white rounded-xl hover:bg-primary-200 transition-colors duration-200"
             >
               Close
