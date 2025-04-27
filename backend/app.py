@@ -10,6 +10,18 @@ import time
 from PIL import Image  # Use PIL (Pillow) to process the image in memory
 from io import BytesIO
 
+from werkzeug.utils import secure_filename
+import base64
+import google.generativeai as genai
+from google.genai import types
+import google.genai as otherGenAi
+import requests
+
+
+
+
+# HUGGINGFACE_API_TOKEN = "your_huggingface_token_here"  # Replace with your actual token
+# HUGGINGFACE_MODEL_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base"
 
 # --- Initialization ---
 
@@ -73,7 +85,10 @@ safety_settings = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
 }
 
+models = genai.list_models()
 
+for model in models:
+    print(model.name, model.supported_generation_methods)
 # --- Core Logic Functions ---
 
 # Function to generate recipe (adapted for Flask context)
@@ -365,6 +380,115 @@ def api_chat():
     except Exception as e:
         print(f"Error in /api/chat: {e}") # Log exception
         return jsonify({"error": f"An internal server error occurred: {e}"}), 500
+    
+
+@app.route('/api/validate-recipe', methods=['POST'])
+def validate_recipe_completion():
+    """
+    Endpoint to validate if the user's uploaded dish matches the intended recipe.
+    """
+    try:
+        # Check if image file is in request
+        if 'image' not in request.files or 'recipe' not in request.form:
+            return jsonify({"error": "Missing image file or recipe text in the request"}), 400
+
+        file = request.files['image']
+        recipe_text = request.form['recipe']  # Recipe text or description they were supposed to make
+        print(recipe_text)
+
+        if file.filename == '':
+            return jsonify({"error": "No selected file"}), 400
+
+        # Read and encode image to base64 (for sending into Gemini multimodal API)
+        image_bytes = file.read()
+        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+
+        # Build prompt
+        textPrompt = f"""
+            You are a master chef judging a cooking competition. 
+            The contestant claims to have made the following dish:
+            "{recipe_text}"
+
+            You are given the photo of their final dish (below). 
+            Please compare the photo with the described dish.
+
+            Respond ONLY with one word: "Match" if it looks correct or "No Match" if it clearly does not match.
+            """
+        
+        imageContent = base64.b64decode(image_base64)
+
+
+        # Send to Gemini
+        # print('data:image/jpeg;base64,' +  image_base64)
+        client = otherGenAi.Client(api_key=API_KEY)
+        response = client.models.generate_content(
+            model = 'gemini-2.0-flash',
+            contents=[
+                textPrompt, 
+                types.Part.from_bytes(
+                    data=imageContent,
+                    mime_type='image/jpeg',
+                ),
+            ]
+        )
+        print(f"response: {response}")
+        if not response.candidates or not response.candidates[0].content or not response.candidates[0].content.parts:
+            return jsonify({"error": "Empty or invalid response from Gemini model"}), 500
+
+        result_text = response.text.strip().lower()
+
+        if "match" in result_text and "no" not in result_text:
+            return jsonify({"success": True, "message": "Congratulations! Recipe verified successfully."})
+        else:
+            return jsonify({"success": False, "message": "Verification failed. The uploaded dish does not match the recipe."})
+
+    except Exception as e:
+        print(f"Error in /api/validate-recipe: {e}")
+        return jsonify({"error": f"Internal server error: {e}"}), 500
+
+
+
+# @app.route('/api/validate-recipe', methods=['POST'])
+# def validate_recipe_completion():
+#     try:
+#         if 'image' not in request.files or 'recipe' not in request.form:
+#             return jsonify({"error": "Missing image file or recipe text"}), 400
+
+#         file = request.files['image']
+#         recipe_text = request.form['recipe'].strip().lower()
+
+#         if file.filename == '':
+#             return jsonify({"error": "No selected file"}), 400
+
+#         image_bytes = file.read()
+
+#         # Send image to HuggingFace BLIP-2 model
+#         headers = {
+#             "Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}"
+#         }
+
+#         response = requests.post(
+#             HUGGINGFACE_MODEL_URL,
+#             headers=headers,
+#             files={"file": image_bytes}
+#         )
+
+#         if response.status_code != 200:
+#             print(f"Error calling HuggingFace API: {response.text}")
+#             return jsonify({"error": "Failed to analyze image"}), 500
+
+#         description = response.json()[0]['generated_text'].strip().lower()
+#         print(f"[DEBUG] HuggingFace Image Description: {description}")
+
+#         # Simple matching logic
+#         if any(word in description for word in recipe_text.split()):
+#             return jsonify({"success": True, "message": "Congratulations! Recipe verified successfully."})
+#         else:
+#             return jsonify({"success": False, "message": "Verification failed. The uploaded dish does not match the recipe."})
+
+#     except Exception as e:
+#         print(f"Error in /api/validate-recipe: {e}")
+#         return jsonify({"error": f"Internal server error: {e}"}), 500
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
