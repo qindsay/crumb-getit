@@ -6,6 +6,10 @@ import google.generativeai as genai
 from google.generativeai.types import GenerationConfig, HarmCategory, HarmBlockThreshold
 from flask import Flask, request, jsonify
 from flask_cors import CORS # Import CORS
+import time
+from PIL import Image  # Use PIL (Pillow) to process the image in memory
+from io import BytesIO
+
 
 # --- Initialization ---
 
@@ -157,8 +161,9 @@ def score_recipe(recipe):
     
     context = """You're scoring recipes based on how much environmental impact they have. 
     Formula: Sustainability Score = (weight_carbon * carbon_subscore) + (weight_land * land_subscore) + 
-    (weight_water * water_subscore) + (weight_antibiotics * antibiotics_subscore) + (weight_soil * soil_subscore).
-    Use web data to calculate weights and subscores, give a score out of 10. Only output the score in this exact JSON format. 
+    (weight_water * water_subscore) + (weight_antibiotics * antibiotics_subscore) + (weight_soil * soil_subscore). 
+    weight_carbon = 0.3, weight_land = 0.15, weight_water = 0.15, weight_antibiotics = 0.25, weight_soil = 0.15.
+    Use web data to calculate subscores, give a score out of 10. Only output the score in this exact JSON format. 
     The JSON object must follow this exact structure: 
     { 
       "score": <float>
@@ -325,7 +330,6 @@ def api_score_recipe():
         print(f"Error in /api/score-recipe: {e}") # Log exception
         return jsonify({"error": f"An internal server error occurred: {e}"}), 500
 
-
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
     """API endpoint for chat interaction."""
@@ -362,6 +366,33 @@ def api_chat():
         print(f"Error in /api/chat: {e}") # Log exception
         return jsonify({"error": f"An internal server error occurred: {e}"}), 500
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/api/send-photo', methods=['POST'])
+def send_photo():
+    if 'file' not in request.files:
+        return 'No file part', 400
+
+    file = request.files['file']
+    if file and allowed_file(file.filename):
+        # Process the file directly in memory
+        img = Image.open(file.stream)  # Open image from the file stream
+
+        # You can now process the image in memory (resize, analyze, etc.)
+        # For example, here is how you might save it temporarily to memory:
+        img_bytes = BytesIO()
+        img.save(img_bytes, format="PNG")
+        img_bytes.seek(0)  # Go to the beginning of the in-memory file
+
+        # Example: Perform any additional processing, storage, or sending the image
+        # If needed, you can send this `img_bytes` to other services or store it in a cloud.
+
+        return 'Photo processed successfully!', 200
+
+    return 'Invalid file type', 400
+
+    
 # --- Run Flask App ---
 if __name__ == '__main__':
     # Runs the Flask development server

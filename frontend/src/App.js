@@ -1,4 +1,6 @@
+import WebcamCapture from './Camera';  // This is the import!
 import React, { useState, useEffect, useCallback } from 'react';
+
 // Assuming Tailwind CSS is set up in your project
 
 // --- Configuration ---
@@ -34,6 +36,7 @@ function App() {
   const [isLoadingRecipe, setIsLoadingRecipe] = useState(false);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [error, setError] = useState(null);
+  const [camera, setCamera] = useState(false)
 
   // --- Available Personalities (matches Python keys/names) ---
   const personalities = [
@@ -44,60 +47,6 @@ function App() {
     "Padma Lakshmi",
     "Generic Chef"
   ];
-
-  // --- API Call Functions ---
-
-  // Function to generate recipe
-  // const handleGenerateRecipe = useCallback(async () => {
-  //   setIsLoadingRecipe(true);
-  //   setError(null);
-  //   setRecipe(null); // Clear previous recipe
-  //   setChatHistory([]); // Clear chat on new recipe
-
-  //   console.log("Sending recipe request:", { ingredients, cuisine }); // Log request data
-
-  //   try {
-  //     // Use the BACKEND_URL constant
-  //     const response1 = await fetch(`${BACKEND_URL}/api/generate-recipe`, {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({ ingredients, cuisine }),
-  //     });
-
-  //      console.log("Recipe response status:", response1.status); // Log response status
-
-  //     if (!response1.ok) {
-  //       // --- Error Handling Fix ---
-  //       // Read the body ONCE as text first.
-  //       const errorText = await response1.text();
-  //       let errorMsg = `HTTP error ${response1.status}: ${errorText}`;
-  //       try {
-  //           // Try to parse the text as JSON for a more specific error message
-  //           const errorJson = JSON.parse(errorText);
-  //           errorMsg = `HTTP error ${response1.status}: ${errorJson.error || errorText}`;
-  //       } catch (parseError) {
-  //           // If it's not JSON, use the raw text.
-  //           // errorMsg is already set to the text content.
-  //       }
-  //       throw new Error(errorMsg);
-  //       // --- End Error Handling Fix ---
-  //     }
-      
-  //     const data = await response1.json();
-  //     console.log("Recipe received:", data); // Log received data
-  //     setRecipe(data);
-
-  //     let initialMessage = `Right, let's get cooking this ${data.recipe_name || 'dish'}! What's your first question?`;
-  //     setChatHistory([{ sender: 'assistant', message: initialMessage }]);
-
-  //   } catch (err) {
-  //     console.error("Failed to generate recipe:", err);
-  //     // err.message now contains the detailed error from the backend or fetch failure
-  //     setError(`Failed to generate recipe: ${err.message}. Ensure the backend server at ${BACKEND_URL} is running and CORS is enabled.`);
-  //   } finally {
-  //     setIsLoadingRecipe(false);
-  //   }
-  // }, [ingredients, cuisine]); // Dependencies for useCallback
 
   const handleGenerateRecipe = useCallback(async () => {
     setIsLoadingRecipe(true);
@@ -264,6 +213,14 @@ function App() {
       <div className="md:w-1/2 space-y-4">
         <h1 className="text-3xl font-bold text-blue-700">Chef Assistant</h1>
 
+        <section className="webcam-section">
+          <button
+          onClick={() => setCamera(camera => !camera)}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 text-xl rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 ease-in-out"
+          > Take Photo
+          </button>
+          {camera && <WebcamCapture />}
+        </section>
         {/* Ingredients Input (Simplified - could be a more complex component) */}
         <div className="bg-white p-4 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-2">Ingredients</h2>

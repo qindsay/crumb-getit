@@ -36,3 +36,18 @@
     transform: rotate(360deg);
   }
 }
+
+@media (max-width: 480px) {
+  .webcam-section {
+    padding: 10px;
+  }
+
+  .webcam-container {
+    padding: 5px;
+  }
+
+  .capture-button {
+    width: 100%; /* Full-width button for smaller screens */
+    font-size: 18px;
+  }
+}
