@@ -445,8 +445,6 @@ def validate_recipe_completion():
         print(f"Error in /api/validate-recipe: {e}")
         return jsonify({"error": f"Internal server error: {e}"}), 500
 
-
-
 # @app.route('/api/validate-recipe', methods=['POST'])
 # def validate_recipe_completion():
 #     try:
