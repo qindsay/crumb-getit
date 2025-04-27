@@ -6,6 +6,10 @@ import google.generativeai as genai
 from google.generativeai.types import GenerationConfig, HarmCategory, HarmBlockThreshold
 from flask import Flask, request, jsonify, send_from_directory, abort, Response
 from flask_cors import CORS # Import CORS
+import time
+from PIL import Image  # Use PIL (Pillow) to process the image in memory
+from io import BytesIO
+
 from werkzeug.utils import secure_filename
 import base64
 import google.generativeai as genai
@@ -13,8 +17,6 @@ from google.genai import types
 import google.genai as otherGenAi
 import requests
 from bson import ObjectId  
-
-
 
 from pymongo import MongoClient
 
@@ -90,14 +92,10 @@ safety_settings = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
 }
 
-models = genai.list_models()
-
-for model in models:
-    print(model.name, model.supported_generation_methods)
 # --- Core Logic Functions ---
 
 # Function to generate recipe (adapted for Flask context)
-def generate_recipe_logic(ingredients, cuisine):
+def generate_recipe_logic(ingredients, cuisine, camera):
     """
     Generates a recipe using the Gemini API based on the provided ingredients and cuisine,
     enforcing JSON output using GenerationConfig.
@@ -112,10 +110,16 @@ def generate_recipe_logic(ingredients, cuisine):
     # API key is already configured globally
 
     # Build ingredient list string
-    ingredient_list = "\n".join(
-        f"- {i.get('amount', '')} {i.get('unit', '')} {i.get('name', 'Unknown Ingredient')}".strip()
-        for i in ingredients
-    )
+    print(ingredients)
+    if not camera:
+        ingredient_list = "\n".join(
+            f"- {i.get('amount', '')} {i.get('unit', '')} {i.get('name', 'Unknown Ingredient')}".strip()
+            for i in ingredients
+        )
+    else:
+        ingredient_list = ingredients
+    
+    print(ingredient_list)
 
     # Build the prompt
     prompt = f"""
@@ -148,7 +152,7 @@ def generate_recipe_logic(ingredients, cuisine):
     """
 
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        model = genai.GenerativeModel('gemini-2.5-flash-preview-04-17')
         generation_config = GenerationConfig(
             response_mime_type="application/json"
         )
@@ -181,15 +185,14 @@ def score_recipe(recipe):
     
     context = """You're scoring recipes based on how much environmental impact they have. 
     Formula: Sustainability Score = (weight_carbon * carbon_subscore) + (weight_land * land_subscore) + 
-    (weight_water * water_subscore) + (weight_antibiotics * antibiotics_subscore) + (weight_soil * soil_subscore).
-    Use web data to calculate weights and subscores, give a score out of 10. Only output the score in this exact JSON format. 
+    (weight_water * water_subscore) + (weight_antibiotics * antibiotics_subscore) + (weight_soil * soil_subscore). 
+    weight_carbon = 0.3, weight_land = 0.15, weight_water = 0.15, weight_antibiotics = 0.25, weight_soil = 0.15.
+    Use web data to calculate subscores, give a score out of 10. Only output the score in this exact JSON format. 
     The JSON object must follow this exact structure: 
     { 
       "score": <float>
     }"""
-    
-    print(recipe)
-    
+        
     try:
         model = genai.GenerativeModel('gemini-2.5-flash-preview-04-17')
         generation_config = GenerationConfig(
@@ -205,6 +208,36 @@ def score_recipe(recipe):
     
     return json.loads(response.text)
 
+def find_ingredients(file):
+    
+    if file.startswith('data:image/jpeg;base64,'):
+        file = file.replace('data:image/jpeg;base64,', '')
+        
+    textPrompt = f"""
+        You are a fridge expert, and someone has given you an image of their fridge. 
+        Tell them how much of each ingredient is in their fridge. Output only a list of ingredients in this exact format: 
+        <name> <amont> <unit> \n
+        """
+        
+    try:
+        client = otherGenAi.Client(api_key=API_KEY)
+        
+        response = client.models.generate_content(
+            model = 'gemini-2.5-flash-preview-04-17',
+            contents=[
+                textPrompt, 
+                types.Part.from_bytes(
+                    data=file,
+                    mime_type='image/jpeg',
+                ),
+            ]
+        )
+        return response.text
+        
+    except Exception as e:
+        print(f"Error: Failed to detect ingredients: {e}")
+        return None
+    
 
 def parse_recipe_strings(raw_data):
     if not raw_data or not isinstance(raw_data, dict) or 'recipeData' not in raw_data:
@@ -259,7 +292,7 @@ def get_chat_response_logic(user_message, recipe_json, personality_name, chat_hi
     try:
         # Initialize the model WITH the system instruction for context
         model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash-latest',
+            model_name='gemini-2.5-flash-preview-04-17',
             system_instruction=system_instruction,
             # safety_settings=safety_settings # Apply safety settings here too
         )
@@ -293,6 +326,7 @@ def get_chat_response_logic(user_message, recipe_json, personality_name, chat_hi
         return None
 
 # --- Flask API Routes ---
+
 @app.route('/api/save-recipe', methods=['POST'])
 def save_recipe():
     data = request.get_json()
@@ -326,12 +360,14 @@ def api_generate_recipe():
 
         ingredients = data['ingredients']
         cuisine = data['cuisine']
+        camera = data['isPhotoMode']
 
-        if not isinstance(ingredients, list) or not isinstance(cuisine, str):
-             return jsonify({"error": "Invalid data types for 'ingredients' (must be list) or 'cuisine' (must be string)"}), 400
+        if not camera:
+            if not isinstance(ingredients, list) or not isinstance(cuisine, str):
+                return jsonify({"error": "Invalid data types for 'ingredients' (must be list) or 'cuisine' (must be string)"}), 400
 
         print(f"Received recipe request: Cuisine={cuisine}, Ingredients={len(ingredients)}") # Log request
-        recipe = generate_recipe_logic(ingredients, cuisine)
+        recipe = generate_recipe_logic(ingredients, cuisine, camera)
 
         if recipe:
             print("Recipe generated successfully.") # Log success
@@ -349,7 +385,6 @@ def api_score_recipe():
     """API endpoint to score a recipe."""
     try:
         data = request.get_json()
-        print(f"here {data}")
         if not data:
             return jsonify({"error": "Missing 'ingredients_used' or 'instructions' in request body"}), 400
 
@@ -370,7 +405,6 @@ def api_score_recipe():
     except Exception as e:
         print(f"Error in /api/score-recipe: {e}") # Log exception
         return jsonify({"error": f"An internal server error occurred: {e}"}), 500
-
 
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
@@ -410,7 +444,7 @@ def api_chat():
     except Exception as e:
         print(f"Error in /api/chat: {e}") # Log exception
         return jsonify({"error": f"An internal server error occurred: {e}"}), 500
-    
+
 @app.route('/api/register-user', methods=['POST'])
 def register_user():
     """Register a new user and initialize their points."""
@@ -472,7 +506,6 @@ def validate_and_award():
 
         Here's the photo of their dish. Reply ONLY with "Match" or "No Match".
     """
-
     client = otherGenAi.Client(api_key=API_KEY)
     response = client.models.generate_content(
         model = 'gemini-2.0-flash',
@@ -481,7 +514,6 @@ def validate_and_award():
             types.Part.from_bytes(data=base64.b64decode(image_base64), mime_type='image/jpeg'),
         ]
     )
-
     if not response.candidates or not response.candidates[0].content or not response.candidates[0].content.parts:
         return jsonify({"error": "Empty model response"}), 500
 
