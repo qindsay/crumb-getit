@@ -85,6 +85,7 @@ export default function RecipeDetail({ recipe }) {
   const [buttonState, setButtonState] = useState(
     location.state?.isCompleted ? "completed" : "initial",
   );
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [isWebcamOpen, setIsWebcamOpen] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
@@ -99,14 +100,40 @@ export default function RecipeDetail({ recipe }) {
     setIsWebcamOpen(true);
   }, [buttonState]);
 
+  const validateRecipe = async (imageData) => {
+    try {
+      console.log(capturedImage);
+      const response = await fetch(`${BACKEND_URL}/api/validate-and-award`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image: capturedImage,
+          recipeId: "680db68a49d574360be30693",
+          userId: 1,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setButtonState("completed");
+      } else {
+        setButtonState("initial");
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error("Validation error:", error);
+      setButtonState("initial");
+      setShowErrorModal(true);
+    }
+  };
+
   const handleCapture = useCallback((imageSrc) => {
     setCapturedImage(imageSrc);
     setButtonState("loading");
-
-    // Simulate API call with delay
-    setTimeout(() => {
-      setButtonState("completed");
-    }, 2000);
+    validateRecipe(imageSrc);
   }, []);
 
   const sendMessage = async (messageToSend) => {
@@ -513,6 +540,30 @@ export default function RecipeDetail({ recipe }) {
         }}
         message={modalMessage}
       />
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md mx-auto">
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">
+                Validation Failed
+              </h3>
+              <p className="text-gray-700 mb-6">
+                We couldn't validate your recipe completion. Please try taking
+                another photo that clearly shows your completed dish.
+              </p>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowErrorModal(false)}
+                  className="px-6 py-3 bg-primary-100 text-white rounded-xl hover:bg-primary-200 transition-colors duration-200"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
