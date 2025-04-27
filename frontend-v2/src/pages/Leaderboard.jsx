@@ -1,9 +1,64 @@
 import { currentUserId, leaderboardData } from "../data/leaderboard";
 
+import { pastMeals } from "../data/pastMeals";
+
 export default function Leaderboard() {
+  const totalPoints = pastMeals.reduce(
+    (sum, meal) => sum + meal.ecobiteScore,
+    0,
+  );
+
   return (
     <div className="min-h-screen w-full bg-white pb-16 sm:pb-0">
-      <div className="w-full max-w-3xl mx-auto px-4 pt-6">
+      {/* Score Block */}
+      <div className="relative w-full mb-8">
+        <div className="bg-gradient-to-r from-primary-300 via-primary-200 to-primary-300 px-4 py-8">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-start justify-between">
+              <div>
+                <h1 className="text-2xl font-bold mb-2 text-white">
+                  Your Ecobite Score
+                </h1>
+                <div className="flex items-end gap-2">
+                  <span className="text-5xl font-bold text-white">
+                    {totalPoints.toFixed(1)}
+                  </span>
+                  <span className="text-xl mb-1 text-white/80">points</span>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="relative">
+                  <div className="absolute -inset-3 bg-white rounded-full blur opacity-75 animate-glow"></div>
+                  <div className="relative w-16 h-16 bg-white/20 backdrop-blur rounded-full flex items-center justify-center border border-white/40">
+                    <span className="text-4xl">🌱</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center gap-2 text-white/80">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                />
+              </svg>
+              <span className="text-sm">Based on {pastMeals.length} meals</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full max-w-3xl mx-auto px-4">
         <h1 className="text-2xl font-bold text-primary-300 mb-8">
           Leaderboard
         </h1>

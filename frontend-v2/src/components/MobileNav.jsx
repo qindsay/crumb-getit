@@ -7,30 +7,6 @@ export default function MobileNav() {
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 sm:hidden">
       <div className="flex justify-around items-center h-16">
         <Link
-          to="/past-meals"
-          className={`flex flex-col items-center justify-center w-full h-full ${
-            location.pathname === "/past-meals"
-              ? "text-primary-300"
-              : "text-gray-500"
-          }`}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-6 h-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <span className="text-xs mt-1">History</span>
-        </Link>
-        <Link
           to="/leaderboard"
           className={`flex flex-col items-center justify-center w-full h-full ${
             location.pathname === "/leaderboard"
