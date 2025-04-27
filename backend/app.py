@@ -296,9 +296,17 @@ def get_chat_response_logic(user_message, recipe_json, personality_name, chat_hi
 @app.route('/api/save-recipe', methods=['POST'])
 def save_recipe():
     data = request.get_json()
-    if not data or not all(k in data for k in ("recipe_name", "servings", "ingredients_used", "instructions", "score")):
+    if not data or not all(k in data for k in ("recipe_name", "servings", "ingredients_used", "instructions", "score", "cuisine")):
         return jsonify({"error": "Invalid recipe data"}), 400
-    result = recipes_collection.insert_one(data)
+
+    result = recipes_collection.insert_one({
+        "recipe_name": data["recipe_name"],
+        "servings": data["servings"],
+        "ingredients_used": data["ingredients_used"],
+        "instructions": data["instructions"],
+        "score": data["score"],
+        "cuisine": data["cuisine"], 
+    })
     return jsonify({"message": "Recipe saved successfully", "id": str(result.inserted_id)}), 201
 
 @app.route('/api/get-recipes', methods=['GET'])
@@ -370,6 +378,21 @@ def api_score_recipe():
     except Exception as e:
         print(f"Error in /api/score-recipe: {e}") # Log exception
         return jsonify({"error": f"An internal server error occurred: {e}"}), 500
+
+@app.route('/api/get-recipe/<recipe_id>', methods=['GET'])
+def get_recipe_by_id(recipe_id):
+    """Fetch a single recipe by its ID."""
+    try:
+        recipe = recipes_collection.find_one({'_id': ObjectId(recipe_id)})
+        if not recipe:
+            return jsonify({"error": "Recipe not found"}), 404
+
+        recipe['_id'] = str(recipe['_id'])  # Convert ObjectId to string for JSON
+        return jsonify(recipe), 200
+
+    except Exception as e:
+        print(f"Error in /api/get-recipe: {e}")
+        return jsonify({"error": f"Internal server error: {e}"}), 500
 
 
 @app.route('/api/chat', methods=['POST'])

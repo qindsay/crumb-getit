@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import imageCompression from 'browser-image-compression'; // ⬅️ Add this import at the top with your other imports
-
+import imageCompression from 'browser-image-compression'; 
 // Assuming Tailwind CSS is set up in your project
 
 // --- Configuration ---
@@ -257,7 +256,8 @@ const handleValidateRecipe = async (e) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       ...recipeData,
-      score: newScore, // ✅ use newScore directly
+      score: newScore, 
+      cuisine: cuisine,
     }),
   });
 
