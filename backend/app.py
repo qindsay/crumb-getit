@@ -86,7 +86,7 @@ safety_settings = {
 # --- Core Logic Functions ---
 
 # Function to generate recipe (adapted for Flask context)
-def generate_recipe_logic(ingredients, cuisine):
+def generate_recipe_logic(ingredients, cuisine, camera):
     """
     Generates a recipe using the Gemini API based on the provided ingredients and cuisine,
     enforcing JSON output using GenerationConfig.
@@ -101,10 +101,16 @@ def generate_recipe_logic(ingredients, cuisine):
     # API key is already configured globally
 
     # Build ingredient list string
-    ingredient_list = "\n".join(
-        f"- {i.get('amount', '')} {i.get('unit', '')} {i.get('name', 'Unknown Ingredient')}".strip()
-        for i in ingredients
-    )
+    print(ingredients)
+    if not camera:
+        ingredient_list = "\n".join(
+            f"- {i.get('amount', '')} {i.get('unit', '')} {i.get('name', 'Unknown Ingredient')}".strip()
+            for i in ingredients
+        )
+    else:
+        ingredient_list = ingredients
+    
+    print(ingredient_list)
 
     # Build the prompt
     prompt = f"""
@@ -177,9 +183,7 @@ def score_recipe(recipe):
     { 
       "score": <float>
     }"""
-    
-    print(recipe)
-    
+        
     try:
         model = genai.GenerativeModel('gemini-2.5-flash-preview-04-17')
         generation_config = GenerationConfig(
@@ -196,22 +200,16 @@ def score_recipe(recipe):
     return json.loads(response.text)
 
 def find_ingredients(file):
-    image_bytes = None
-    with open(file, 'rb') as newfile:
-        # Read the contents
-        # contents = file.read()
-        image_bytes = newfile.read()
     
-    image_base64 = base64.b64encode(image_bytes).decode('utf-8')
-
-    # Build prompt
+    if file.startswith('data:image/jpeg;base64,'):
+        file = file.replace('data:image/jpeg;base64,', '')
+        
     textPrompt = f"""
         You are a fridge expert, and someone has given you an image of their fridge. 
-        Tell them how much of each ingredient is in their fridge. Output only ingredients in this exact format: amount unit name
+        Tell them how much of each ingredient is in their fridge. Output only a list of ingredients in this exact format: 
+        <name> <amont> <unit> \n
         """
-    
-    imageContent = base64.b64decode(image_base64)
-    
+        
     try:
         client = otherGenAi.Client(api_key=API_KEY)
         
@@ -220,12 +218,12 @@ def find_ingredients(file):
             contents=[
                 textPrompt, 
                 types.Part.from_bytes(
-                    data=imageContent,
+                    data=file,
                     mime_type='image/jpeg',
                 ),
             ]
         )
-        return jsonify(response.text)
+        return response.text
         
     except Exception as e:
         print(f"Error: Failed to detect ingredients: {e}")
@@ -318,7 +316,6 @@ def get_chat_response_logic(user_message, recipe_json, personality_name, chat_hi
         return None
 
 # --- Flask API Routes ---
-
 @app.route('/api/generate-recipe', methods=['POST'])
 def api_generate_recipe():
     """API endpoint to generate a recipe."""
@@ -330,12 +327,14 @@ def api_generate_recipe():
 
         ingredients = data['ingredients']
         cuisine = data['cuisine']
+        camera = data['isPhotoMode']
 
-        if not isinstance(ingredients, list) or not isinstance(cuisine, str):
-             return jsonify({"error": "Invalid data types for 'ingredients' (must be list) or 'cuisine' (must be string)"}), 400
+        if not camera:
+            if not isinstance(ingredients, list) or not isinstance(cuisine, str):
+                return jsonify({"error": "Invalid data types for 'ingredients' (must be list) or 'cuisine' (must be string)"}), 400
 
         print(f"Received recipe request: Cuisine={cuisine}, Ingredients={len(ingredients)}") # Log request
-        recipe = generate_recipe_logic(ingredients, cuisine)
+        recipe = generate_recipe_logic(ingredients, cuisine, camera)
 
         if recipe:
             print("Recipe generated successfully.") # Log success
@@ -503,14 +502,10 @@ def api_use_photo():
 def api_recognize_ingredients():
     try:
         data = request.get_json()
-        if not data or 'backend' not in data or 'filepath' not in data:
-            return jsonify({"error": "Bad Request"}), 400
+        image_data = data['image']  # Get the base64 string from the client
         
-        backend_url = data['backend']
-        filepath = data['filepath']
-        image_path = backend_url + '/' + filepath
-        
-        ingredients = find_ingredients(image_path)
+        ingredients = find_ingredients(image_data)
+        print("current ingredients", ingredients)
         return jsonify({"ingredients": ingredients}) #not sure if it's ingredients json
     except Exception as e:
         print(f"Error in /api/recognize-ingredients: {e}") # Log exception

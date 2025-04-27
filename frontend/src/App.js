@@ -1,6 +1,5 @@
 import WebcamCapture from './Camera';  // This is the import!
 import React, { useState, useEffect, useCallback } from 'react';
-
 import imageCompression from 'browser-image-compression'; // ⬅️ Add this import at the top with your other imports
 
 // Assuming Tailwind CSS is set up in your project
@@ -10,12 +9,50 @@ import imageCompression from 'browser-image-compression'; // ⬅️ Add this imp
 const BACKEND_URL = 'http://127.0.0.1:5001'; // Use http://localhost:5001 if 127.0.0.1 doesn't work
 
 // Helper function to format ingredients for display or API
-const formatIngredients = (ingredients) => {
-  // Example: Convert array of objects to a simple list string if needed
-  // Or just use the array directly if the API expects that
-  return ingredients.map(ing => `${ing.amount} ${ing.unit} ${ing.name}`).join(', ');
-};
+// const formatIngredients = (ingredients) => {
+//   // Example: Convert array of objects to a simple list string if needed
+//   // Or just use the array directly if the API expects that
+//   return ingredients.map(ing => `${ing.amount} ${ing.unit} ${ing.name}`).join(', ');
+// };
 
+// const formatIngredients = (ingredients) => {
+//   // Check if ingredients is an object
+//   if (typeof ingredients !== 'object' || ingredients === null) {
+//     console.error("Input is not an object");
+//     return '';
+//   }
+
+//   // Map over the dictionary's values (which are the ingredient objects)
+//   return Object.values(ingredients)
+//     .map(ing => {
+//       // Ensure all fields are present; fallback to empty strings if any are missing
+//       const amount = ing.amount ? `${ing.amount}` : '';
+//       const unit = ing.unit ? `${ing.unit}` : '';
+//       const name = ing.name ? ing.name : '';
+
+//       // Construct the formatted ingredient string
+//       return `${amount} ${unit} ${name}`.trim();
+//     })
+//     .filter(ing => ing) // Filter out any empty strings
+//     .join(', '); // Join with a comma and space
+// };
+
+// const formatIngredientsAsList = (ingredients) => {
+//   if (!Array.isArray(ingredients)) {
+//     console.error("Input is not an array of ingredients");
+//     return '';
+//   }
+  
+//   // Format each ingredient as a text line
+//   return ingredients.map(ing => {
+//     const amount = ing.amount || '';
+//     const unit = ing.unit || '';
+//     const name = ing.name || '';
+    
+//     // Build the formatted string with proper spacing
+//     return `${amount} ${unit} ${name}`.trim();
+//   }).join('\n'); // Join with newlines for a list format
+// };
 // --- Main App Component ---
 function App() {
   // --- State Variables ---
@@ -103,19 +140,6 @@ function App() {
     setScore(0)
     setChatHistory([]); // Clear chat on new recipe
 
-    console.log("here");
-    if (isPhotoMode) {
-      console.log("hello");
-      const response = await(`${BACKEND_URL}/api/recognize-ingredients`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ "backend": BACKEND_URL, "filepath": filepath })
-      });
-      const text = await response.text;
-      // const data = await response.json();
-      console.log(text);
-    }
-
     console.log("Sending recipe request:", { ingredients, cuisine }); // Log request data
 
     try {
@@ -123,7 +147,7 @@ function App() {
       const response1 = await fetch(`${BACKEND_URL}/api/generate-recipe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ingredients, cuisine }),
+        body: JSON.stringify({ ingredients, cuisine, isPhotoMode }),
       });
 
        console.log("Recipe response status:", response1.status); // Log response status
@@ -285,31 +309,31 @@ function App() {
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 text-xl rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 ease-in-out"
           > Take Photo
           </button>
-          {camera && <WebcamCapture setFilepath={setFilepath} />}
+          {camera && <WebcamCapture setIngredients={setIngredients} />}
           </section>
           ) : (
             <div className="bg-white p-4 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-2">Ingredients</h2>
           {/* Make ingredients editable - Example using textarea */}
-           <textarea
-             value={ingredients.map(i => `${i.amount || ''} ${i.unit || ''} ${i.name || ''}`.trim()).join('\n')}
-             onChange={(e) => {
-               const lines = e.target.value.split('\n');
-               const newIngredients = lines.map(line => {
-                 const parts = line.trim().match(/^([\d./\s]*)\s*([a-zA-Z]*)\s*(.*)$/);
-                 // Basic parsing, might need refinement
-                 return {
-                   amount: parts?.[1]?.trim() || '',
-                   unit: parts?.[2]?.trim() || '',
-                   name: parts?.[3]?.trim() || ''
-                 };
-               }).filter(i => i.name); // Filter out empty lines
-               setIngredients(newIngredients);
-             }}
-             rows={ingredients.length + 1} // Adjust rows dynamically
-             className="w-full p-2 border rounded-md text-gray-700 whitespace-pre-wrap focus:ring-2 focus:ring-blue-500 focus:outline-none"
-             placeholder="Enter ingredients: e.g., 2 lbs chicken breast"
-           />
+          <textarea
+            value={Array.isArray(ingredients) ? ingredients.map(i => `${i.amount || ''} ${i.unit || ''} ${i.name || ''}`.trim()).join('\n') : ''}
+            onChange={(e) => {
+              const lines = e.target.value.split('\n');
+              const newIngredients = lines.map(line => {
+                const parts = line.trim().match(/^([\d./\s]*)\s*([a-zA-Z]*)\s*(.*)$/);
+                // Basic parsing, might need refinement
+                return {
+                  amount: parts?.[1]?.trim() || '',
+                  unit: parts?.[2]?.trim() || '',
+                  name: parts?.[3]?.trim() || ''
+                };
+              }).filter(i => i.name); // Filter out empty lines
+              setIngredients(newIngredients);
+            }}
+            rows={Math.min(ingredients.length + 1, 10)}            
+            className="w-full p-2 border rounded-md text-gray-700 whitespace-pre-wrap focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            placeholder="Enter ingredients: e.g., 2 lbs chicken breast"
+          />
            <p className="text-xs text-gray-500 mt-1">Enter one ingredient per line (amount unit name).</p>
             </div>
           )}

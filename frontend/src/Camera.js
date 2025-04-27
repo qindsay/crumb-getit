@@ -3,17 +3,7 @@ import Webcam from 'react-webcam';
 
 const BACKEND_URL = 'http://127.0.0.1:5001';
 
-function base64ToBlob(base64, mimeType = 'image/png') {
-  const byteChars = atob(base64.split(',')[1]); // decode base64
-  const byteNumbers = new Array(byteChars.length);
-  for (let i = 0; i < byteChars.length; i++) {
-      byteNumbers[i] = byteChars.charCodeAt(i);
-  }
-  const byteArray = new Uint8Array(byteNumbers);
-  return new Blob([byteArray], { type: mimeType });
-}
-
-function WebcamCapture({ setFilepath }) {
+function WebcamCapture({ setIngredients }) {
     const [photo, setPhoto] = useState(null); 
     const [isUploading, setIsUploading] = useState(false);
 
@@ -30,13 +20,16 @@ function WebcamCapture({ setFilepath }) {
         setIsUploading(true);
 
         try {
-            const formData = new FormData();
-            const blob = base64ToBlob(photo);
-            formData.append('file', blob, 'captured-photo.png');
+            // const formData = new FormData();
+            // const blob = base64ToBlob(photo);
+            // formData.append('file', blob, 'captured-photo.png');
 
-            const response = await fetch(`${BACKEND_URL}/api/use-photo`, {
+            const response = await fetch(`${BACKEND_URL}/api/recognize-ingredients`, {
                 method: 'POST',
-                body: formData,
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 'image': photo })
             });
 
             if (!response.ok) {
@@ -54,7 +47,10 @@ function WebcamCapture({ setFilepath }) {
             }
             
             const data = await response.json();
-            setFilepath(data['filepath'])
+            
+            // const newIngredients = formatJsonToList((data['ingredients']))
+            setIngredients(data['ingredients']);
+            console.log(data['ingredients']);
         
         } catch (error) {
             console.error('Error sending photo:', error);
