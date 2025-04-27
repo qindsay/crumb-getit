@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function RecipeCarousel({ recipes }) {
+export default function RecipeCarousel({ recipes = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
 
@@ -20,71 +20,104 @@ export default function RecipeCarousel({ recipes }) {
     }
   };
 
+  console.log(recipes);
+
   return (
-    <div className="relative w-full max-w-full sm:max-w-3xl mx-auto bg-gray-50 p-3 sm:p-6 rounded-2xl">
-      <div
-        className="overflow-hidden rounded-lg sm:rounded-xl shadow-lg cursor-pointer"
-        onClick={() => navigate(`/recipe/${recipes[currentIndex].id}`)}
-      >
-        <div>
-          <div className="relative bg-white flex items-center justify-center py-4 sm:py-8 hover:bg-gray-50 transition-colors duration-200">
-            <div className="w-3/4 sm:w-1/2 aspect-[4/3] relative">
-              <div className="relative">
-                <img
-                  src={recipes[currentIndex].image}
-                  alt={recipes[currentIndex].recipe_name}
-                  className="w-full h-full object-contain"
-                />
-                <div className="absolute left-2 top-2">
-                  <div className="px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full shadow-md border border-primary-100/20">
-                    <span className="text-sm font-medium bg-gradient-to-r from-primary-300 to-primary-200 bg-clip-text text-transparent">
-                      {recipes[currentIndex].cuisine}
-                    </span>
+    <div className="relative w-full max-w-full sm:max-w-3xl mx-auto bg-gray-50 p-3 sm:p-6 rounded-2xl min-h-[400px]">
+      {recipes.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <div className="mb-4">
+              <svg
+                className="animate-spin h-8 w-8 text-primary-300 mx-auto"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+            </div>
+            <p className="text-gray-600">Loading recipes...</p>
+          </div>
+        </div>
+      )}
+      {recipes && recipes.length > 0 && (
+        <div
+          className="overflow-hidden rounded-lg sm:rounded-xl shadow-lg cursor-pointer"
+          onClick={() => navigate(`/recipe/1`, {state: {recipe: recipes[currentIndex]}})}
+        >
+          <div>
+            <div className="relative bg-white flex items-center justify-center py-4 sm:py-8 hover:bg-gray-50 transition-colors duration-200">
+              <div className="w-3/4 sm:w-1/2 aspect-[4/3] relative">
+                <div className="relative">
+                  <img
+                    src="/src/assets/chocolate_lava.png"
+                    alt={recipes[currentIndex].recipe_name}
+                    className="w-full h-full object-contain"
+                  />
+                  <div className="absolute left-2 top-2">
+                    <div className="px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full shadow-md border border-primary-100/20">
+                      <span className="text-sm font-medium bg-gradient-to-r from-primary-300 to-primary-200 bg-clip-text text-transparent">
+                        {recipes[currentIndex].cuisine}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="absolute top-2 right-2">
-                <div className="group relative">
-                  {/* Tooltip */}
-                  <div className="absolute invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity duration-200 -right-2 top-16 w-48 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
-                    <div className="absolute -top-1 right-6 w-2 h-2 bg-gray-900 transform rotate-45"></div>
-                    ECOBITE: Environmental Impact Score
-                  </div>
-                  {/* Outer ring with gradient */}
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-primary-300 to-primary-200 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
-                  {/* Main circle */}
-                  <div className="relative w-14 h-14 bg-white rounded-full flex items-center justify-center">
-                    {/* Inner circle with score */}
-                    <div className="w-12 h-12 bg-primary-300 rounded-full flex items-center justify-center shadow-lg">
-                      <span className="text-white font-bold text-xl">
-                        {Math.floor(recipes[currentIndex].ecobiteScore / 10)}
-                      </span>
+                <div className="absolute top-2 right-2">
+                  <div className="group relative">
+                    {/* Tooltip */}
+                    <div className="absolute invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity duration-200 -right-2 top-16 w-48 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                      <div className="absolute -top-1 right-6 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                      ECOBITE: Environmental Impact Score
+                    </div>
+                    {/* Outer ring with gradient */}
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-primary-300 to-primary-200 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
+                    {/* Main circle */}
+                    <div className="relative w-16 h-16 bg-white rounded-full flex items-center justify-center">
+                      {/* Inner circle with score */}
+                      <div className="w-14 h-14 bg-primary-300 rounded-full flex items-center justify-center shadow-lg">
+                        <span className="text-white font-bold text-lg">
+                          {recipes[currentIndex].score}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="p-3 sm:p-4">
-            <h3 className="text-xl sm:text-2xl font-medium mb-1 text-gray-900">
-              {recipes[currentIndex].recipe_name}
-            </h3>
-            <p className="text-sm sm:text-base text-gray-600 mb-2">
-              Serves {recipes[currentIndex].serving} •{" "}
-              {recipes[currentIndex].ingredients_used.length} ingredients
-            </p>
-            <div className="flex justify-between items-center">
-              <span className="text-xs sm:text-sm text-gray-500">
-                {recipes[currentIndex].time}
-              </span>
-              <span className="text-xs sm:text-sm text-primary-100 font-medium">
-                {recipes[currentIndex].date}
-              </span>
+            <div className="p-3 sm:p-4">
+              <h3 className="text-xl sm:text-2xl font-medium mb-1 text-gray-900">
+                {recipes[currentIndex].recipe_name}
+              </h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-2">
+                Serves {recipes[currentIndex].serving} •{" "}
+                {recipes[currentIndex].ingredients_used.length} ingredients
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-xs sm:text-sm text-gray-500">
+                  {recipes[currentIndex].time}
+                </span>
+                <span className="text-xs sm:text-sm text-primary-100 font-medium">
+                  {recipes[currentIndex].date}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <button
         onClick={prevSlide}
