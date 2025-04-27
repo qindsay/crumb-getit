@@ -410,69 +410,123 @@ def api_chat():
         return jsonify({"error": f"An internal server error occurred: {e}"}), 500
     
 
-@app.route('/api/validate-recipe', methods=['POST'])
-def validate_recipe_completion():
+@app.route('/api/validate-and-award', methods=['POST'])
+def validate_and_award():
+    if 'image' not in request.files or 'recipe_id' not in request.form or 'user_id' not in request.form:
+        return jsonify({"error": "Missing image or recipe_id or user_id"}), 400
+
+    file = request.files['image']
+    recipe_id = request.form['recipe_id']
+    user_id = request.form['user_id']
+
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    # Get the recipe text
+    recipe = recipes_collection.find_one({'_id': ObjectId(recipe_id)})
+    if not recipe:
+        return jsonify({"error": "Recipe not found"}), 404
+
+    recipe_text = recipe['recipe_name']
+
+    image_bytes = file.read()
+    image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+
+    textPrompt = f"""
+        You are a master chef judging a cooking competition.
+        The contestant claims to have made:
+        "{recipe_text}"
+
+        Here's the photo of their dish. Reply ONLY with "Match" or "No Match".
     """
-    Endpoint to validate if the user's uploaded dish matches the intended recipe.
-    """
-    try:
-        # Check if image file is in request
-        if 'image' not in request.files or 'recipe' not in request.form:
-            return jsonify({"error": "Missing image file or recipe text in the request"}), 400
 
-        file = request.files['image']
-        recipe_text = request.form['recipe']  # Recipe text or description they were supposed to make
-        print(recipe_text)
+    client = otherGenAi.Client(api_key=API_KEY)
+    response = client.models.generate_content(
+        model = 'gemini-2.0-flash',
+        contents=[
+            textPrompt,
+            types.Part.from_bytes(data=base64.b64decode(image_base64), mime_type='image/jpeg'),
+        ]
+    )
 
-        if file.filename == '':
-            return jsonify({"error": "No selected file"}), 400
+    if not response.candidates or not response.candidates[0].content or not response.candidates[0].content.parts:
+        return jsonify({"error": "Empty model response"}), 500
 
-        # Read and encode image to base64 (for sending into Gemini multimodal API)
-        image_bytes = file.read()
-        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+    result_text = response.text.strip().lower()
 
-        # Build prompt
-        textPrompt = f"""
-            You are a master chef judging a cooking competition. 
-            The contestant claims to have made the following dish:
-            "{recipe_text}"
-
-            You are given the photo of their final dish (below). 
-            Please compare the photo with the described dish.
-
-            Respond ONLY with one word: "Match" if it looks correct or "No Match" if it clearly does not match.
-            """
-        
-        imageContent = base64.b64decode(image_base64)
-
-
-        # Send to Gemini
-        # print('data:image/jpeg;base64,' +  image_base64)
-        client = otherGenAi.Client(api_key=API_KEY)
-        response = client.models.generate_content(
-            model = 'gemini-2.5-flash-preview-04-17',
-            contents=[
-                textPrompt, 
-                types.Part.from_bytes(
-                    data=imageContent,
-                    mime_type='image/jpeg',
-                ),
-            ]
+    if "match" in result_text and "no" not in result_text:
+        points_to_add = recipe.get('score', 0)
+        users_collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$inc": {"total_points": points_to_add}}
         )
-        print(f"response: {response}")
-        if not response.candidates or not response.candidates[0].content or not response.candidates[0].content.parts:
-            return jsonify({"error": "Empty or invalid response from Gemini model"}), 500
+        return jsonify({"success": True, "message": f"Match! Awarded {points_to_add} points."}), 200
+    
+    return jsonify({"success": False, "message": "No match, no points awarded."}), 200
 
-        result_text = response.text.strip().lower()
+# @app.route('/api/validate-recipe', methods=['POST'])
+# def validate_recipe_completion():
+#     """
+#     Endpoint to validate if the user's uploaded dish matches the intended recipe.
+#     """
+#     try:
+#         # Check if image file is in request
+#         if 'image' not in request.files or 'recipe' not in request.form:
+#             return jsonify({"error": "Missing image file or recipe text in the request"}), 400
 
-        if "match" in result_text and "no" not in result_text:
-            return jsonify({"success": True, "message": "Congratulations! Recipe verified successfully."})
-        else:
-            return jsonify({"success": False, "message": "Verification failed. The uploaded dish does not match the recipe."})
+#         file = request.files['image']
+#         recipe_text = request.form['recipe']  # Recipe text or description they were supposed to make
+#         print(recipe_text)
 
-    except Exception as e:
-        print(f"Error in /api/validate-recipe: {e}")
-        return jsonify({"error": f"Internal server error: {e}"}), 500
+#         if file.filename == '':
+#             return jsonify({"error": "No selected file"}), 400
+
+#         # Read and encode image to base64 (for sending into Gemini multimodal API)
+#         image_bytes = file.read()
+#         image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+
+#         # Build prompt
+#         textPrompt = f"""
+#             You are a master chef judging a cooking competition. 
+#             The contestant claims to have made the following dish:
+#             "{recipe_text}"
+
+#             You are given the photo of their final dish (below). 
+#             Please compare the photo with the described dish.
+
+#             Respond ONLY with one word: "Match" if it looks correct or "No Match" if it clearly does not match.
+#             """
+        
+#         imageContent = base64.b64decode(image_base64)
+
+
+#         # Send to Gemini
+#         # print('data:image/jpeg;base64,' +  image_base64)
+#         client = otherGenAi.Client(api_key=API_KEY)
+#         response = client.models.generate_content(
+#             model = 'gemini-2.5-flash-preview-04-17',
+#             contents=[
+#                 textPrompt, 
+#                 types.Part.from_bytes(
+#                     data=imageContent,
+#                     mime_type='image/jpeg',
+#                 ),
+#             ]
+#         )
+#         print(f"response: {response}")
+#         if not response.candidates or not response.candidates[0].content or not response.candidates[0].content.parts:
+#             return jsonify({"error": "Empty or invalid response from Gemini model"}), 500
+
+#         result_text = response.text.strip().lower()
+
+#         if "match" in result_text and "no" not in result_text:
+#             return jsonify({"success": True, "message": "Congratulations! Recipe verified successfully."})
+#         else:
+#             return jsonify({"success": False, "message": "Verification failed. The uploaded dish does not match the recipe."})
+
+#     except Exception as e:
+#         print(f"Error in /api/validate-recipe: {e}")
+#         return jsonify({"error": f"Internal server error: {e}"}), 500
 
 
 @app.route('/api/recognize-ingredients', methods=['POST']) #scans image and outputs ingredients
