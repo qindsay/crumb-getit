@@ -31,7 +31,7 @@ export default function RecipeCarousel({ recipes }) {
             <div className="w-3/4 sm:w-1/2 aspect-[4/3] relative">
               <img
                 src={recipes[currentIndex].image}
-                alt={recipes[currentIndex].name}
+                alt={recipes[currentIndex].recipe_name}
                 className="w-full h-full object-contain"
               />
               <div className="absolute top-2 right-2">
@@ -48,7 +48,7 @@ export default function RecipeCarousel({ recipes }) {
                     {/* Inner circle with score */}
                     <div className="w-12 h-12 bg-primary-300 rounded-full flex items-center justify-center shadow-lg">
                       <span className="text-white font-bold text-xl">
-                        {recipes[currentIndex].ecobiteScore}
+                        {Math.floor(recipes[currentIndex].ecobiteScore / 10)}
                       </span>
                     </div>
                   </div>
@@ -59,10 +59,11 @@ export default function RecipeCarousel({ recipes }) {
 
           <div className="p-3 sm:p-4">
             <h3 className="text-xl sm:text-2xl font-medium mb-1 text-gray-900">
-              {recipes[currentIndex].name}
+              {recipes[currentIndex].recipe_name}
             </h3>
             <p className="text-sm sm:text-base text-gray-600 mb-2">
-              {recipes[currentIndex].description}
+              Serves {recipes[currentIndex].serving} •{" "}
+              {recipes[currentIndex].ingredients_used.length} ingredients
             </p>
             <div className="flex justify-between items-center">
               <span className="text-xs sm:text-sm text-gray-500">

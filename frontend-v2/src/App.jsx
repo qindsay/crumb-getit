@@ -4,6 +4,7 @@ import {
   Route,
   useLocation,
 } from "react-router-dom";
+import "regenerator-runtime/runtime";
 import Header from "./components/Header";
 import LandingPage from "./pages/LandingPage";
 import Features from "./pages/Features";

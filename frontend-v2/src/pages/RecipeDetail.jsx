@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import ReplyModal from "../components/ReplyModal";
+import WebcamModal from "../components/WebcamModal";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
@@ -8,7 +9,7 @@ import { recipeDetail } from "../data/recipeDetails";
 import InstructionBlock from "../components/InstructionBlock";
 const BACKEND_URL = "http://127.0.0.1:5001"; // Use http://localhost:5001 if 127.0.0.1 doesn't work
 
-export default function RecipeDetail() {
+export default function RecipeDetail({ recipe }) {
   const navigate = useNavigate();
   const location = useLocation();
   const silenceTimer = useRef(null);
@@ -84,6 +85,8 @@ export default function RecipeDetail() {
   const [buttonState, setButtonState] = useState(
     location.state?.isCompleted ? "completed" : "initial",
   );
+  const [isWebcamOpen, setIsWebcamOpen] = useState(false);
+  const [capturedImage, setCapturedImage] = useState(null);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [error, setError] = useState(null);
 
@@ -93,14 +96,18 @@ export default function RecipeDetail() {
 
   const handleComplete = useCallback(() => {
     if (buttonState !== "initial") return;
+    setIsWebcamOpen(true);
+  }, [buttonState]);
 
+  const handleCapture = useCallback((imageSrc) => {
+    setCapturedImage(imageSrc);
     setButtonState("loading");
 
     // Simulate API call with delay
     setTimeout(() => {
       setButtonState("completed");
     }, 2000);
-  }, [buttonState]);
+  }, []);
 
   const sendMessage = async (messageToSend) => {
     console.log("Sending message...");
@@ -200,10 +207,29 @@ export default function RecipeDetail() {
             />
           </div>
           <h1 className="text-2xl font-bold text-primary-300 mb-2">
-            {recipeDetail.name}
+            {recipeDetail.recipe_name}
           </h1>
           <div className="flex justify-between items-center">
-            <p className="text-gray-600 font-medium">{recipeDetail.time}</p>
+            <div className="flex flex-col gap-1">
+              <p className="text-gray-600 font-medium">{recipeDetail.time}</p>
+              <p className="text-gray-600 font-medium flex items-center gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                {recipeDetail.serving} servings
+              </p>
+            </div>
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => navigate("/chef-chat")}
@@ -332,7 +358,7 @@ export default function RecipeDetail() {
                   Ingredients
                 </h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  {recipeDetail.ingredients.length} items
+                  {recipeDetail.ingredients_used.length} items
                 </p>
               </div>
               <svg
@@ -357,10 +383,16 @@ export default function RecipeDetail() {
           {expandedId === "ingredients" && (
             <div className="mt-4 bg-white rounded-xl p-6 shadow-lg">
               <ul className="space-y-2">
-                {recipeDetail.ingredients.map((ingredient, index) => (
-                  <li key={index} className="flex items-center text-gray-700">
-                    <span className="w-2 h-2 bg-primary-300 rounded-full mr-3 opacity-75"></span>
-                    {ingredient}
+                {recipeDetail.ingredients_used.map((ingredient, index) => (
+                  <li
+                    key={index}
+                    className="flex items-center justify-between text-gray-700"
+                  >
+                    <div className="flex items-center">
+                      <span className="w-2 h-2 bg-primary-300 rounded-full mr-3 opacity-75"></span>
+                      {ingredient.name}
+                    </div>
+                    <span className="text-gray-500">{ingredient.amount}</span>
                   </li>
                 ))}
               </ul>
@@ -374,12 +406,13 @@ export default function RecipeDetail() {
             Instructions
           </h2>
           <div className="space-y-4">
-            {recipeDetail.instructions.map((instruction) => (
+            {recipeDetail.instructions.map((instruction, index) => (
               <InstructionBlock
-                key={instruction.id}
+                key={index}
                 instruction={instruction}
-                isExpanded={expandedId === instruction.id}
-                onToggle={() => handleExpand(instruction.id)}
+                stepNumber={index + 1}
+                isExpanded={expandedId === index}
+                onToggle={() => handleExpand(index)}
               />
             ))}
           </div>
@@ -462,6 +495,11 @@ export default function RecipeDetail() {
           </button>
         </div>
       </div>
+      <WebcamModal
+        isOpen={isWebcamOpen}
+        onClose={() => setIsWebcamOpen(false)}
+        onCapture={handleCapture}
+      />
       <ReplyModal
         isOpen={isModalOpen}
         onClose={() => {

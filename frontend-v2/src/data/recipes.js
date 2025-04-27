@@ -32,38 +32,51 @@ export const filterCategories = [
 export const recipes = [
   {
     id: 1,
-    name: "Creamy Garlic Pasta",
-    description: "A rich and creamy pasta dish with roasted garlic",
+    recipe_name: "Creamy Garlic Pasta",
+    serving: 4,
+    ingredients_used: [
+      { name: "Pasta", amount: "400g" },
+      { name: "Garlic", amount: "6 cloves" },
+      { name: "Heavy Cream", amount: "200ml" },
+      { name: "Parmesan", amount: "100g" },
+    ],
+    instructions: [
+      {
+        instruction: "Boil pasta in salted water until al dente",
+        video_url: "URL_PASTA_BOILING",
+      },
+      {
+        instruction: "Sauté minced garlic in olive oil until fragrant",
+        video_url: "URL_GARLIC_SAUTE",
+      },
+    ],
     image: "/src/assets/chocolate_lava.png",
     date: "2024-02-15",
     time: "30 min",
-    ecobiteScore: 8.5,
+    ecobiteScore: 85,
   },
   {
     id: 2,
-    name: "Mediterranean Salad",
-    description: "Fresh and healthy salad with feta cheese",
+    recipe_name: "Mediterranean Salad",
+    serving: 6,
+    ingredients_used: [
+      { name: "Mixed Greens", amount: "300g" },
+      { name: "Feta Cheese", amount: "150g" },
+      { name: "Olives", amount: "100g" },
+    ],
+    instructions: [
+      {
+        instruction: "Wash and dry all vegetables thoroughly",
+        video_url: "URL_WASH_VEGGIES",
+      },
+      {
+        instruction: "Combine ingredients in a large bowl",
+        video_url: "URL_COMBINE_SALAD",
+      },
+    ],
     image: "/src/assets/chocolate_lava.png",
     date: "2024-02-14",
     time: "15 min",
-    ecobiteScore: 8.5,
-  },
-  {
-    id: 3,
-    name: "Chocolate Lava Cake",
-    description: "Decadent chocolate dessert with a molten center",
-    image: "/src/assets/chocolate_lava.png",
-    date: "2024-02-13",
-    time: "45 min",
-    ecobiteScore: 8.5,
-  },
-  {
-    id: 4,
-    name: "Spicy Thai Curry",
-    description: "Aromatic curry with coconut milk and vegetables",
-    image: "/src/assets/chocolate_lava.png",
-    date: "2024-02-12",
-    time: "40 min",
-    ecobiteScore: 8.5,
+    ecobiteScore: 95,
   },
 ];
