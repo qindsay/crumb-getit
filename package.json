@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "browser-image-compression": "^2.0.2",
+    "react-webcam": "^7.2.0"
+  }
+}

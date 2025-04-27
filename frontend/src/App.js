@@ -1,3 +1,4 @@
+import WebcamCapture from './Camera';  // This is the import!
 import React, { useState, useEffect, useCallback } from 'react';
 import imageCompression from 'browser-image-compression'; // ⬅️ Add this import at the top with your other imports
 
@@ -8,12 +9,50 @@ import imageCompression from 'browser-image-compression'; // ⬅️ Add this imp
 const BACKEND_URL = 'http://127.0.0.1:5001'; // Use http://localhost:5001 if 127.0.0.1 doesn't work
 
 // Helper function to format ingredients for display or API
-const formatIngredients = (ingredients) => {
-  // Example: Convert array of objects to a simple list string if needed
-  // Or just use the array directly if the API expects that
-  return ingredients.map(ing => `${ing.amount} ${ing.unit} ${ing.name}`).join(', ');
-};
+// const formatIngredients = (ingredients) => {
+//   // Example: Convert array of objects to a simple list string if needed
+//   // Or just use the array directly if the API expects that
+//   return ingredients.map(ing => `${ing.amount} ${ing.unit} ${ing.name}`).join(', ');
+// };
 
+// const formatIngredients = (ingredients) => {
+//   // Check if ingredients is an object
+//   if (typeof ingredients !== 'object' || ingredients === null) {
+//     console.error("Input is not an object");
+//     return '';
+//   }
+
+//   // Map over the dictionary's values (which are the ingredient objects)
+//   return Object.values(ingredients)
+//     .map(ing => {
+//       // Ensure all fields are present; fallback to empty strings if any are missing
+//       const amount = ing.amount ? `${ing.amount}` : '';
+//       const unit = ing.unit ? `${ing.unit}` : '';
+//       const name = ing.name ? ing.name : '';
+
+//       // Construct the formatted ingredient string
+//       return `${amount} ${unit} ${name}`.trim();
+//     })
+//     .filter(ing => ing) // Filter out any empty strings
+//     .join(', '); // Join with a comma and space
+// };
+
+// const formatIngredientsAsList = (ingredients) => {
+//   if (!Array.isArray(ingredients)) {
+//     console.error("Input is not an array of ingredients");
+//     return '';
+//   }
+  
+//   // Format each ingredient as a text line
+//   return ingredients.map(ing => {
+//     const amount = ing.amount || '';
+//     const unit = ing.unit || '';
+//     const name = ing.name || '';
+    
+//     // Build the formatted string with proper spacing
+//     return `${amount} ${unit} ${name}`.trim();
+//   }).join('\n'); // Join with newlines for a list format
+// };
 // --- Main App Component ---
 function App() {
   // --- State Variables ---
@@ -36,14 +75,16 @@ function App() {
   const [isLoadingRecipe, setIsLoadingRecipe] = useState(false);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [error, setError] = useState(null);
+  const [camera, setCamera] = useState(false)
   const [userId, setUserId] = useState(null); // User MongoDB _id
   const [userName, setUserName] = useState(''); // Name input (optional)
 const [userPoints, setUserPoints] = useState(0); // User total points
 
   const [validationImage, setValidationImage] = useState(null);
-const [validationResult, setValidationResult] = useState(null);
-const [isValidatingRecipe, setIsValidatingRecipe] = useState(false);
-
+  const [validationResult, setValidationResult] = useState(null);
+  const [isValidatingRecipe, setIsValidatingRecipe] = useState(false);
+  const [isPhotoMode, setIsPhotoMode] = useState(false);
+  const [filepath, setFilepath] = useState("")
 
   // --- Available Personalities (matches Python keys/names) ---
   const personalities = [
@@ -56,7 +97,29 @@ const [isValidatingRecipe, setIsValidatingRecipe] = useState(false);
   ];
 
   // --- API Call Functions ---
+ const handleValidateRecipe = async (e) => {
+  e.preventDefault();
+  if (!validationImage || !recipe || !userId) return;
 
+  setIsValidatingRecipe(true);
+  setValidationResult(null);
+
+  try {
+    const options = {
+      maxSizeMB: 0.5,
+      maxWidthOrHeight: 800,
+      useWebWorker: true
+    };
+    const compressedFile = await imageCompression(validationImage, options);
+
+    const formData = new FormData();
+    formData.append('image', compressedFile);
+    formData.append('recipe_id', recipe._id);
+    formData.append('user_id', userId); // <-- Include the user ID here!
+
+    for (const [key, value] of formData.entries()) {
+  console.log(key, value);
+}
   const registerUser = async (name) => {
   try {
     const response = await fetch(`${BACKEND_URL}/api/register-user`, {
@@ -83,32 +146,6 @@ useEffect(() => {
   registerUser('Chef Enthusiast'); // Or let user type their name
 }, []);
 
-
-const handleValidateRecipe = async (e) => {
-  e.preventDefault();
-  if (!validationImage || !recipe || !userId) return;
-
-  setIsValidatingRecipe(true);
-  setValidationResult(null);
-
-  try {
-    const options = {
-      maxSizeMB: 0.5,
-      maxWidthOrHeight: 800,
-      useWebWorker: true
-    };
-    const compressedFile = await imageCompression(validationImage, options);
-
-    const formData = new FormData();
-    formData.append('image', compressedFile);
-    formData.append('recipe_id', recipe._id);
-    formData.append('user_id', userId); // <-- Include the user ID here!
-
-    for (const [key, value] of formData.entries()) {
-  console.log(key, value);
-}
-
-
     const response = await fetch(`${BACKEND_URL}/api/validate-and-award`, {
       method: 'POST',
       body: formData,
@@ -133,60 +170,6 @@ const handleValidateRecipe = async (e) => {
   }
 };
 
-
-
-  // Function to generate recipe
-  // const handleGenerateRecipe = useCallback(async () => {
-  //   setIsLoadingRecipe(true);
-  //   setError(null);
-  //   setRecipe(null); // Clear previous recipe
-  //   setChatHistory([]); // Clear chat on new recipe
-
-  //   console.log("Sending recipe request:", { ingredients, cuisine }); // Log request data
-
-  //   try {
-  //     // Use the BACKEND_URL constant
-  //     const response1 = await fetch(`${BACKEND_URL}/api/generate-recipe`, {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({ ingredients, cuisine }),
-  //     });
-
-  //      console.log("Recipe response status:", response1.status); // Log response status
-
-  //     if (!response1.ok) {
-  //       // --- Error Handling Fix ---
-  //       // Read the body ONCE as text first.
-  //       const errorText = await response1.text();
-  //       let errorMsg = `HTTP error ${response1.status}: ${errorText}`;
-  //       try {
-  //           // Try to parse the text as JSON for a more specific error message
-  //           const errorJson = JSON.parse(errorText);
-  //           errorMsg = `HTTP error ${response1.status}: ${errorJson.error || errorText}`;
-  //       } catch (parseError) {
-  //           // If it's not JSON, use the raw text.
-  //           // errorMsg is already set to the text content.
-  //       }
-  //       throw new Error(errorMsg);
-  //       // --- End Error Handling Fix ---
-  //     }
-      
-  //     const data = await response1.json();
-  //     console.log("Recipe received:", data); // Log received data
-  //     setRecipe(data);
-
-  //     let initialMessage = `Right, let's get cooking this ${data.recipe_name || 'dish'}! What's your first question?`;
-  //     setChatHistory([{ sender: 'assistant', message: initialMessage }]);
-
-  //   } catch (err) {
-  //     console.error("Failed to generate recipe:", err);
-  //     // err.message now contains the detailed error from the backend or fetch failure
-  //     setError(`Failed to generate recipe: ${err.message}. Ensure the backend server at ${BACKEND_URL} is running and CORS is enabled.`);
-  //   } finally {
-  //     setIsLoadingRecipe(false);
-  //   }
-  // }, [ingredients, cuisine]); // Dependencies for useCallback
-
   const handleGenerateRecipe = useCallback(async () => {
     setIsLoadingRecipe(true);
     setError(null);
@@ -201,7 +184,7 @@ const handleValidateRecipe = async (e) => {
       const response1 = await fetch(`${BACKEND_URL}/api/generate-recipe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ingredients, cuisine }),
+        body: JSON.stringify({ ingredients, cuisine, isPhotoMode }),
       });
 
        console.log("Recipe response status:", response1.status); // Log response status
@@ -289,9 +272,7 @@ const handleValidateRecipe = async (e) => {
     } finally {
       setIsLoadingRecipe(false);
     }
-  }, [ingredients, cuisine]); // Dependencies for useCallback
-
-  
+  }, [ingredients, cuisine, isPhotoMode]); // Dependencies for useCallback
 
   // Function to send chat message
   const handleSendMessage = useCallback(async () => {
@@ -365,37 +346,57 @@ const handleValidateRecipe = async (e) => {
   // --- Render ---
   return (
     <div className="container mx-auto p-4 font-sans bg-gray-50 min-h-screen flex flex-col md:flex-row gap-4">
-
       {/* --- Left Panel: Inputs & Recipe --- */}
       <div className="md:w-1/2 space-y-4">
         <h1 className="text-3xl font-bold text-blue-700">Chef Assistant</h1>
-
-        {/* Ingredients Input (Simplified - could be a more complex component) */}
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setIsPhotoMode(!isPhotoMode)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md"
+            >
+              {isPhotoMode ? 'Type Ingredient' : 'Add Photo'}
+          </button>
+        
+        {isPhotoMode ? (
+          <section className="webcam-section">
+          <button
+          onClick={() => setCamera(camera => !camera)}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 text-xl rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition duration-150 ease-in-out"
+          > Take Photo
+          </button>
+          {camera && <WebcamCapture setIngredients={setIngredients} />}
+          </section>
+          ) : (
+            <div className="bg-white p-4 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-2">Ingredients</h2>
           {/* Make ingredients editable - Example using textarea */}
-           <textarea
-             value={ingredients.map(i => `${i.amount || ''} ${i.unit || ''} ${i.name || ''}`.trim()).join('\n')}
-             onChange={(e) => {
-               const lines = e.target.value.split('\n');
-               const newIngredients = lines.map(line => {
-                 const parts = line.trim().match(/^([\d./\s]*)\s*([a-zA-Z]*)\s*(.*)$/);
-                 // Basic parsing, might need refinement
-                 return {
-                   amount: parts?.[1]?.trim() || '',
-                   unit: parts?.[2]?.trim() || '',
-                   name: parts?.[3]?.trim() || ''
-                 };
-               }).filter(i => i.name); // Filter out empty lines
-               setIngredients(newIngredients);
-             }}
-             rows={ingredients.length + 1} // Adjust rows dynamically
-             className="w-full p-2 border rounded-md text-gray-700 whitespace-pre-wrap focus:ring-2 focus:ring-blue-500 focus:outline-none"
-             placeholder="Enter ingredients: e.g., 2 lbs chicken breast"
-           />
+          <textarea
+            value={Array.isArray(ingredients) ? ingredients.map(i => `${i.amount || ''} ${i.unit || ''} ${i.name || ''}`.trim()).join('\n') : ''}
+            onChange={(e) => {
+              const lines = e.target.value.split('\n');
+              const newIngredients = lines.map(line => {
+                const parts = line.trim().match(/^([\d./\s]*)\s*([a-zA-Z]*)\s*(.*)$/);
+                // Basic parsing, might need refinement
+                return {
+                  amount: parts?.[1]?.trim() || '',
+                  unit: parts?.[2]?.trim() || '',
+                  name: parts?.[3]?.trim() || ''
+                };
+              }).filter(i => i.name); // Filter out empty lines
+              setIngredients(newIngredients);
+            }}
+            rows={Math.min(ingredients.length + 1, 10)}            
+            className="w-full p-2 border rounded-md text-gray-700 whitespace-pre-wrap focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            placeholder="Enter ingredients: e.g., 2 lbs chicken breast"
+          />
            <p className="text-xs text-gray-500 mt-1">Enter one ingredient per line (amount unit name).</p>
-        </div>
+            </div>
+          )}
+          </div>
 
+        
+        {/* Ingredients Input (Simplified - could be a more complex component) */}
+        
         {/* Cuisine Input */}
         <div className="bg-white p-4 rounded-lg shadow">
           <label htmlFor="cuisine" className="block text-xl font-semibold mb-2">Cuisine</label>
