@@ -474,29 +474,6 @@ def validate_recipe_completion():
         print(f"Error in /api/validate-recipe: {e}")
         return jsonify({"error": f"Internal server error: {e}"}), 500
 
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-
-@app.route('/api/use-photo', methods=['POST']) #scans image and outputs ingredients
-def api_use_photo():
-    if not request:
-        return 'Bad request', 400
-
-    if 'file' in request.files:
-        img = Image.open(request.files['file'].stream)  # Open image from the file stream
-        # Generate a unique filename for the image
-        filename = f"{time.time()}.png"  # Create a unique file name
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
-
-        # Ensure the upload folder exists
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        
-        # Save the image to the local directory
-        img.save(file_path, format="PNG")
-
-        return jsonify({"filepath": file_path})
-    else:
-        return 'Invalid file type', 400
 
 @app.route('/api/recognize-ingredients', methods=['POST']) #scans image and outputs ingredients
 def api_recognize_ingredients():
